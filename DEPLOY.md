@@ -1,5 +1,17 @@
 # VigilEye — Zero-Cost Deployment Guide
 
+## Live Production URLs
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Landing Page | https://vigileye-landing.vercel.app | ✅ |
+| Driver App | https://vigileye-driver.vercel.app | ✅ |
+| Admin App | https://vigiley-admin.vercel.app | ✅ |
+| Backend API | https://vigiley-backend.onrender.com | ✅ |
+| ML API | https://vigiley-ml.onrender.com | ✅ |
+
+> **Note:** Render free tier sleeps after 15 min inactivity. First request takes 20-30 sec to wake up. Frontend shows a "Server is waking up..." message automatically.
+
 ## Local Development (Current — All Running)
 
 | Service | Port | URL | Status |

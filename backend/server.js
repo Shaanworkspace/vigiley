@@ -44,6 +44,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/wake-up', (req, res) => {
+  res.json({ status: 'awake', message: 'Server is ready' });
+});
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
