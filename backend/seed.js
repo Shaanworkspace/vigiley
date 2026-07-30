@@ -23,20 +23,20 @@ const seed = async () => {
       console.log('Admin user already exists');
     }
 
-    const driverExists = await User.findOne({ email: 'driver@example.com' });
-    if (!driverExists) {
-      await User.create({
-        name: 'Test Driver',
-        email: 'driver@example.com',
-        password: 'driver123',
-        role: 'driver',
-        phone: '+91 9876543210',
-        licenseNumber: 'DL-2024-001',
-        vehicleNumber: 'UP 32 AB 1234',
-      });
-      console.log('Driver user created: driver@example.com / driver123');
-    } else {
-      console.log('Driver user already exists');
+    const drivers = [
+      { name: 'Rajesh Kumar', email: 'driver1@example.com', password: 'driver123', phone: '+91 9876543210', licenseNumber: 'DL-2024-001', vehicleNumber: 'UP 32 AB 1234' },
+      { name: 'Amit Singh', email: 'driver2@example.com', password: 'driver123', phone: '+91 8765432109', licenseNumber: 'DL-2024-002', vehicleNumber: 'HR 26 CD 5678' },
+      { name: 'Suresh Patel', email: 'driver3@example.com', password: 'driver123', phone: '+91 7654321098', licenseNumber: 'DL-2024-003', vehicleNumber: 'GJ 01 EF 9012' },
+    ];
+
+    for (const d of drivers) {
+      const exists = await User.findOne({ email: d.email });
+      if (!exists) {
+        await User.create(d);
+        console.log(`Driver created: ${d.email} / ${d.password}`);
+      } else {
+        console.log(`Driver ${d.email} already exists`);
+      }
     }
 
     await mongoose.connection.close();
