@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { driverAPI } from '../services/api';
-import { Play, Square, Activity } from 'lucide-react';
+import { Play, Square, AlertTriangle } from 'lucide-react';
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
 const CAPTURE_INTERVAL = 1000;
@@ -9,28 +9,69 @@ const EAR_CLOSED = 0.20;
 const EAR_LOW = 0.25;
 const MAR_YAWN = 0.50;
 
-const STATE_META = {
-  awake:         { label: 'Awake',         color: '#22c55e', bg: '#052e16', risk: 0 },
-  heavy_eyelids: { label: 'Heavy Eyelids', color: '#eab308', bg: '#422006', risk: 1 },
-  mouth_open:    { label: 'Mouth Open',    color: '#a3e635', bg: '#1a2e05', risk: 1 },
-  eyes_closed:   { label: 'Eyes Closed',   color: '#f97316', bg: '#431407', risk: 2 },
-  yawning:       { label: 'Yawning',       color: '#f59e0b', bg: '#451a03', risk: 2 },
-  microsleep:    { label: 'Microsleep',    color: '#ea580c', bg: '#3b0f02', risk: 3 },
-  drowsy:        { label: 'Drowsy',        color: '#ef4444', bg: '#450a0a', risk: 4 },
-  high_risk:     { label: 'High Risk',     color: '#dc2626', bg: '#450a0a', risk: 5 },
-  critical:      { label: 'Critical',      color: '#b91c1c', bg: '#450a0a', risk: 5 },
+const EAR_WARN = [
+  { min: 0.25, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], icon: '✓', lv: 0 },
+  { min: 0.23, max: 0.25, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], icon: '⚠', lv: 1 },
+  { min: 0.20, max: 0.23, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], icon: '⚡', lv: 2 },
+  { min: 0.15, max: 0.20, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], icon: '‼', lv: 3 },
+  { min: 0.10, max: 0.15, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], icon: '🚨', lv: 4 },
+  { min: -999, max: 0.10, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], icon: '🚨', lv: 5 },
+];
+
+const MAR_WARN = [
+  { min: 0.50, max: 0.55, msg: ['Mouth opening — are you yawning?', 'Close your mouth gently', 'Yawning starting — take a deep breath', 'Mouth slightly open — stay aware', 'Early yawn detected — rest soon'], icon: '⚠', lv: 1 },
+  { min: 0.55, max: 0.65, msg: ['Close your mouth! Yawning detected!', 'Yawning = fatigue! Take a break!', 'Excessive yawning — rest needed!', 'You are yawning — pull over soon!', 'Close your mouth and stretch!'], icon: '⚡', lv: 2 },
+  { min: 0.65, max: 99, msg: ['HEAVY YAWNING! REST IMMEDIATELY!', 'Repeated yawning = drowsy! Take a break!', 'CRITICAL: Excessive yawning — stop driving!', 'DANGER: Yawning means fatigue! Rest now!', 'ALERT: Your body needs rest — pull over!'], icon: '‼', lv: 3 },
+  { min: -999, max: 0.50, msg: ['Mouth closed — good', 'Normal mouth position', 'Lips sealed — correct'], icon: '✓', lv: 0 },
+];
+
+const PERCLOS_WARN = [
+  { min: 0, max: 10, msg: ['Eyes staying open — good', 'Normal eye closure rate', 'Blink rate healthy'], icon: '✓', lv: 0 },
+  { min: 10, max: 20, msg: ['Eyes closing frequently — stay alert!', 'Blinking more than usual — focus!', 'Eye closure increasing — wake up!', 'Frequent blinks = early fatigue', 'Your eyes are closing too often!'], icon: '⚠', lv: 1 },
+  { min: 20, max: 30, msg: ['HIGH eye closure rate! Wake up!', 'Eyes closed 20%+ of the time!', 'Drowsiness building — take action!', 'Warning: You are checking out!', 'Eye closure elevated — dangerous!'], icon: '⚡', lv: 2 },
+  { min: 30, max: 50, msg: ['CRITICAL: Eyes closed 30%+ — PULL OVER!', 'DANGER: Extreme eye closure! Stop now!', 'EMERGENCY: You are not watching the road!', 'PERCLOS critical — immediate rest required!', 'ALERT: 30%+ eye closure = microsleep risk!'], icon: '‼', lv: 3 },
+  { min: 50, max: 999, msg: ['CRITICAL: Half your eyes are closed! PULL OVER!', 'EMERGENCY: SYSTEM ALERT! Stop NOW!', 'DANGER: You are asleep at the wheel!', 'IMMEDIATE ACTION — STOP DRIVING!', 'LIFE SAFETY: Eyes closed 50%+!'], icon: '🚨', lv: 4 },
+];
+
+const STATE_WARN = {
+  awake:         ['All clear — driving safely', 'Normal driving state', 'You are alert and focused'],
+  heavy_eyelids: ['Wake up! Open your eyes wider!', 'Dont let your eyelids get heavy!', 'Stay sharp — eyes drooping!', 'Fight the drowsiness! Move around!', 'Alert: Early drowsiness signs detected!'],
+  mouth_open:    ['Close your mouth', 'Mouth open — stay focused on the road', 'Keep your mouth closed while driving'],
+  eyes_closed:   ['Open your eyes!', 'Eyes closed — look at the road!', 'You closed your eyes! Stay awake!', 'WAKE UP! Watch the road!'],
+  yawning:       ['Yawning = tired! Take a break!', 'Excessive yawning — rest needed', 'Close your mouth and rest your eyes', 'Yawn detected! You need to rest!'],
+  microsleep:    ['MICROSLEEP DETECTED! WAKE UP!', 'You almost fell asleep! Open eyes!', 'ALERT: Microsleep episode! Wake up!', 'DANGER: You nodded off! Snap out!'],
+  drowsy:        ['DROWSY! PULL OVER AND REST!', 'You are too drowsy to drive! Stop!', 'DANGER: Drowsy driving detected!', 'ALERT: Your reaction time is compromised!'],
+  high_risk:     ['EMERGENCY! STOP DRIVING NOW!', 'CRITICAL DROWSINESS! Pull over!', 'DANGER: Immediate rest required!', 'SYSTEM: High risk — stop the vehicle!'],
+  critical:      ['CRITICAL ALERT! SYSTEM EMERGENCY!', 'LIFE SAFETY: Stop driving immediately!', 'FATAL RISK DETECTED! PULL OVER NOW!', 'EMERGENCY PROTOCOL ACTIVATED!'],
 };
 
-const WARNINGS = {
-  heavy_eyelids: { msg: 'Wake up! Open your eyes wider', icon: '!' },
-  eyes_closed:   { msg: 'Open your eyes!',               icon: '!' },
-  microsleep:    { msg: 'WAKE UP! Open your eyes immediately!', icon: '!!' },
-  drowsy:        { msg: 'DANGER! Pull over and rest!',    icon: '!!!' },
-  high_risk:     { msg: 'EMERGENCY! Stop driving now!',   icon: '!!!' },
-  critical:      { msg: 'CRITICAL! System alert!',        icon: '!!!' },
-  yawning:       { msg: 'Close your mouth. Take a break', icon: '!' },
-  mouth_open:    { msg: 'Close your mouth',               icon: '!' },
-};
+const LV = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#b91c1c'];
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function WarningBar({ icon, label, value, warns }) {
+  const w = warns.find(x => value >= x.min && value < x.max) || warns[warns.length - 1];
+  const msg = Array.isArray(w?.msg) ? pick(w.msg) : (w?.msg || '');
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '6px 10px', borderRadius: 8,
+      background: `${LV[w?.lv || 0]}12`, borderLeft: `3px solid ${LV[w?.lv || 0]}`,
+      transition: 'all 0.2s',
+    }}>
+      <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{w?.icon || '✓'}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 9, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+        <div style={{ fontSize: 12, color: LV[w?.lv || 0], fontWeight: 700, lineHeight: 1.3 }}>{msg}</div>
+      </div>
+      <div style={{
+        fontSize: 11, fontWeight: 800, color: LV[w?.lv || 0],
+        background: `${LV[w?.lv || 0]}18`, padding: '2px 8px', borderRadius: 6,
+        whiteSpace: 'nowrap',
+      }}>{value > 3 ? value.toFixed(value > 20 ? 0 : 1) : value.toFixed(2)}{value > 3 ? (value > 20 ? '%' : '') : ''}</div>
+    </div>
+  );
+}
 
 export default function VideoFeed() {
   const wc = useRef(null);
@@ -53,34 +94,20 @@ export default function VideoFeed() {
     const raw = wc.current?.getScreenshot();
     if (!raw) return;
     try {
-      const img = raw.split(',')[1];
-      if (img.length > 80000) {
+      let imgData = raw.split(',')[1];
+      if (imgData.length > 80000) {
         const c = document.createElement('canvas');
         c.width = 320; c.height = 240;
         const ctx = c.getContext('2d');
         const imgEl = new Image();
         await new Promise(r => { imgEl.onload = r; imgEl.src = raw; });
         ctx.drawImage(imgEl, 0, 0, 320, 240);
-        const resized = c.toDataURL('image/jpeg', 0.7).split(',')[1];
-        const res = await fetch(`${ML_API}/predict`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: resized }),
-        });
-        if (!res.ok) return;
-        const d = await res.json();
-        if (d.face_detected) {
-          setEar(d.ear); setMar(d.mar);
-          setPerclos(d.perclos * 100); setConf(d.confidence * 100);
-          setSt(d.status); setCc(d.close_counter); setYc(d.yawn_counter);
-          driverAPI.sendDetection(d).catch(() => {});
-        }
-        return;
+        imgData = c.toDataURL('image/jpeg', 0.7).split(',')[1];
       }
       const res = await fetch(`${ML_API}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: img }),
+        body: JSON.stringify({ image: imgData }),
       });
       if (!res.ok) return;
       const d = await res.json();
@@ -108,14 +135,9 @@ export default function VideoFeed() {
     try { await driverAPI.endSession(); } catch (_) {}
   };
 
-  const m = STATE_META[st] || STATE_META.awake;
-  const w = WARNINGS[st];
   const isAlert = st === 'drowsy' || st === 'high_risk' || st === 'critical' || st === 'microsleep';
-
-  const earLabel = ear >= EAR_LOW ? 'Open' : ear >= EAR_CLOSED ? 'Heavy' : 'Closed';
-  const earColor = ear >= EAR_LOW ? '#22c55e' : ear >= EAR_CLOSED ? '#eab308' : '#ef4444';
-  const marLabel = mar >= MAR_YAWN ? 'Yawning' : 'Closed';
-  const marColor = mar >= MAR_YAWN ? '#f59e0b' : '#22c55e';
+  const ec = ear >= EAR_LOW ? LV[0] : ear >= EAR_CLOSED ? LV[2] : LV[4];
+  const mc = mar >= MAR_YAWN ? LV[2] : LV[0];
 
   return (
     <div style={{
@@ -124,137 +146,133 @@ export default function VideoFeed() {
     }}>
       <div style={{ position: 'relative', background: '#0f172a', aspectRatio: '4/3', overflow: 'hidden' }}>
         <Webcam ref={wc} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          screenshotFormat="image/jpeg" mirrored
-          videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
+          screenshotFormat="image/jpeg" mirrored videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
 
         {!on && (
           <div style={{
-            position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.7)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+            position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <p style={{ fontSize: 14, color: '#64748b', fontWeight: 500 }}>
+            <p style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>
               {se ? 'Detection paused' : 'Press start to begin'}
             </p>
           </div>
         )}
 
         {on && (
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-            padding: '6px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            background: isAlert ? 'linear-gradient(rgba(0,0,0,0.7), transparent)' : 'linear-gradient(rgba(0,0,0,0.5), transparent)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.color,
-                animation: isAlert ? 'pulse 0.6s ease-in-out infinite' : 'pulse 1.5s ease-in-out infinite' }} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>LIVE</span>
-            </div>
-            <div style={{
-              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
-              background: `${m.color}25`, color: m.color, textTransform: 'uppercase',
-            }}>
-              {m.label} · Risk {m.risk}/5
-            </div>
-          </div>
-        )}
-
-        {on && isAlert && (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 5,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            background: `radial-gradient(ellipse at center, ${m.color}22 0%, transparent 70%)`,
-            animation: 'alert-flash 0.8s ease-in-out infinite',
-          }}>
-            <div style={{
-              fontSize: st === 'critical' || st === 'high_risk' ? 26 : 20,
-              fontWeight: 900, color: '#fff', textShadow: `0 0 30px ${m.color}`,
-              textAlign: 'center', padding: '0 16px', lineHeight: 1.3,
-            }}>
-              {w?.msg || m.label}
-            </div>
-          </div>
-        )}
-
-        {on && !isAlert && w && (
-          <div style={{
-            position: 'absolute', top: 36, left: 0, right: 0, zIndex: 5,
-            textAlign: 'center', padding: '4px 12px',
-          }}>
-            <div style={{
-              fontSize: 14, fontWeight: 700, color: m.color, textShadow: '0 0 20px rgba(0,0,0,0.8)',
-            }}>
-              {w.msg}
-            </div>
-          </div>
-        )}
-
-        {on && (
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-            background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
-            padding: '24px 10px 8px', display: 'flex', gap: 8,
-          }}>
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: earColor }}>{ear.toFixed(2)}</div>
-              <div style={{ fontSize: 8, color: earColor, fontWeight: 700, textTransform: 'uppercase' }}>{earLabel}</div>
-              <div style={{ fontSize: 7, color: '#64748b' }}>EAR</div>
-            </div>
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: marColor }}>{mar.toFixed(2)}</div>
-              <div style={{ fontSize: 8, color: marColor, fontWeight: 700, textTransform: 'uppercase' }}>{marLabel}</div>
-              <div style={{ fontSize: 7, color: '#64748b' }}>MAR</div>
-            </div>
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: isAlert ? '#ef4444' : perclos > 10 ? '#f59e0b' : '#22c55e' }}>
-                {perclos.toFixed(0)}%
+          <>
+            {isAlert && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 5,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: `radial-gradient(ellipse at center, ${LV[4]}33 0%, transparent 70%)`,
+                animation: 'af 0.6s ease-in-out infinite',
+              }}>
+                <div style={{
+                  fontSize: st === 'critical' || st === 'high_risk' ? 26 : 20,
+                  fontWeight: 900, color: '#fff', textShadow: `0 0 30px ${LV[4]}, 0 0 60px ${LV[4]}44`,
+                  textAlign: 'center', padding: '0 16px', lineHeight: 1.3,
+                }}>
+                  {pick(STATE_WARN[st] || [st])}
+                </div>
               </div>
-              <div style={{ fontSize: 8, color: isAlert ? '#ef4444' : '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
-                PERCLOS
+            )}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '6px 10px',
+              background: isAlert ? 'linear-gradient(#000000cc, transparent)' : 'linear-gradient(rgba(0,0,0,0.6), transparent)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isAlert ? LV[4] : LV[0],
+                  animation: isAlert ? 'pulse 0.4s ease-in-out infinite' : 'pulse 1.5s ease-in-out infinite' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>LIVE</span>
               </div>
-              <div style={{ fontSize: 7, color: '#64748b' }}>closed %</div>
+              <div style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
+                background: isAlert ? `${LV[4]}25` : `${LV[0]}25`,
+                color: isAlert ? LV[4] : LV[0], textTransform: 'uppercase',
+              }}>
+                {st.replace('_', ' ')}
+              </div>
             </div>
-          </div>
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
+              background: 'linear-gradient(transparent, rgba(0,0,0,0.9))',
+              padding: '24px 10px 8px', display: 'flex', gap: 8,
+            }}>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: ec }}>{ear.toFixed(2)}</div>
+                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>EAR</div>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: mc }}>{mar.toFixed(2)}</div>
+                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>MAR</div>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{
+                  fontSize: 16, fontWeight: 800,
+                  color: perclos > 30 ? LV[4] : perclos > 10 ? LV[2] : LV[0],
+                }}>{perclos.toFixed(0)}%</div>
+                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>PERCLOS</div>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
-      <div style={{ padding: '10px 14px 6px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Activity size={13} color={m.color} />
-          <span style={{ fontWeight: 700, fontSize: 13, color: m.color, textTransform: 'capitalize' }}>
-            {m.label}
-          </span>
-          <span style={{ fontSize: 10, color: '#64748b', marginLeft: 'auto' }}>
-            Confidence: {conf.toFixed(0)}%
-          </span>
-        </div>
+      {on && (
+        <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <WarningBar icon="👁" label="Eyes (EAR)" value={ear} warns={EAR_WARN} />
+          <WarningBar icon="👄" label="Mouth (MAR)" value={mar} warns={MAR_WARN} />
+          <WarningBar icon="📊" label="Fatigue (PERCLOS)" value={perclos} warns={PERCLOS_WARN} />
 
-        <div style={{ display: 'flex', gap: 6 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 8, color: '#64748b', marginBottom: 2, fontWeight: 600 }}>Eyes Closed</div>
-            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: '#ef4444', width: `${Math.min(cc / 90 * 100, 100)}%`, transition: 'width 0.2s' }} />
+          {isAlert && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+              padding: '10px', marginTop: 4, borderRadius: 8,
+              background: `${LV[4]}18`, border: `1.5px solid ${LV[4]}44`,
+              animation: 'af 0.8s ease-in-out infinite',
+            }}>
+              <AlertTriangle size={18} color={LV[4]} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: LV[4] }}>
+                {pick(STATE_WARN[st] || [st])}
+              </span>
             </div>
-            <div style={{ fontSize: 8, color: '#475569', marginTop: 1 }}>{cc}f / 90f (drowsy)</div>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 8, color: '#64748b', marginBottom: 2, fontWeight: 600 }}>Yawn</div>
-            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: '#f59e0b', width: `${Math.min(yc / 15 * 100, 100)}%`, transition: 'width 0.2s' }} />
+          )}
+
+          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>EYES: {cc}f / 90f</div>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: LV[4], width: `${Math.min(cc / 90 * 100, 100)}%`, transition: 'width 0.2s' }} />
+              </div>
             </div>
-            <div style={{ fontSize: 8, color: '#475569', marginTop: 1 }}>{yc}f / 15f (yawn)</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>YAWN: {yc}f / 15f</div>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: LV[2], width: `${Math.min(yc / 15 * 100, 100)}%`, transition: 'width 0.2s' }} />
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>CONF: {conf.toFixed(0)}%</div>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: conf > 70 ? LV[4] : conf > 40 ? LV[2] : LV[0], width: `${conf}%`, transition: 'width 0.2s' }} />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {err && (
-        <div style={{ fontSize: 10, color: '#f59e0b', textAlign: 'center', padding: '0 14px 6px' }}>{err}</div>
+        <div style={{ fontSize: 10, color: LV[2], textAlign: 'center', padding: '4px 10px' }}>{err}</div>
       )}
 
       <button onClick={on ? stop : start} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        padding: 10, margin: 12, borderRadius: 8,
+        padding: 10, margin: 10, borderRadius: 8,
         border: '1.5px solid', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-        width: 'calc(100% - 24px)',
+        width: 'calc(100% - 20px)',
         background: on ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
         color: on ? '#fca5a5' : '#86efac',
         borderColor: on ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
@@ -264,10 +282,7 @@ export default function VideoFeed() {
       </button>
       <style>{`
         @keyframes pulse {50%{opacity:0.4}}
-        @keyframes alert-flash {
-          0%,100%{opacity:1}
-          50%{opacity:0.85}
-        }
+        @keyframes af {0%,100%{opacity:1} 50%{opacity:0.65}}
       `}</style>
     </div>
   );
