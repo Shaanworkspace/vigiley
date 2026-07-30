@@ -86,6 +86,9 @@ def predict():
             'close_counter': detector.close_counter,
             'yawn_counter': detector.yawn_counter,
             'frame_id': frame_count,
+            'face_box': features['face_box'],
+            'eye_points': features['eye_points'],
+            'mouth_points': features['mouth_points'],
             'thresholds': {
                 'ear_closed': EAR_THRESHOLD,
                 'mar_yawn': MAR_THRESHOLD,

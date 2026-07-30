@@ -104,12 +104,27 @@ class FeatureExtractor:
                 closed = sum(1 for e in window if e < 0.21)
                 perclos = closed / len(window)
 
+        xs = [lm.x * w for lm in landmarks]
+        ys = [lm.y * h for lm in landmarks]
+        face_x = int(min(xs))
+        face_y = int(min(ys))
+        face_w = int(max(xs) - min(xs))
+        face_h = int(max(ys) - min(ys))
+
+        eye_lm = [33, 158, 159, 133, 153, 144, 362, 385, 386, 263, 373, 374]
+        mouth_lm = [13, 14, 78, 308, 61, 291]
+        eye_pts = [[int(landmarks[i].x * w), int(landmarks[i].y * h)] for i in eye_lm]
+        mouth_pts = [[int(landmarks[i].x * w), int(landmarks[i].y * h)] for i in mouth_lm]
+
         return {
             'eye_aspect_ratio': round(ear, 4),
             'mouth_aspect_ratio': round(mar, 4),
             'head_pitch': round(pitch, 2),
             'head_yaw': round(yaw, 2),
             'perclos': round(perclos, 4),
+            'face_box': [face_x, face_y, face_w, face_h],
+            'eye_points': eye_pts,
+            'mouth_points': mouth_pts,
         }
 
     def release(self):

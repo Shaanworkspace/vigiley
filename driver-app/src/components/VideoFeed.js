@@ -73,8 +73,51 @@ function WarningBar({ icon, label, value, warns }) {
   );
 }
 
+function drawFace(ctx, w, h, box, eyePts, mouthPts, ear, mar, earClosed) {
+  if (!box) return;
+  const sx = ctx.canvas.width / w;
+  const sy = ctx.canvas.height / h;
+  const [fx, fy, fw, fh] = box;
+  const c = ear < EAR_CLOSED ? '#ef4444' : ear < EAR_LOW ? '#eab308' : '#22c55e';
+
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  ctx.strokeStyle = c;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = `${c}66`;
+  ctx.shadowBlur = 12;
+  ctx.strokeRect(fx * sx, fy * sy, fw * sx, fh * sy);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = `${c}18`;
+  ctx.fillRect(fx * sx, fy * sy, fw * sx, fh * sy);
+
+  if (eyePts) {
+    ctx.fillStyle = ear < EAR_CLOSED ? '#ef4444' : '#60a5fa';
+    eyePts.forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x * sx, y * sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  if (mouthPts) {
+    ctx.fillStyle = mar > MAR_YAWN ? '#f59e0b' : '#a78bfa';
+    mouthPts.forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x * sx, y * sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = c;
+  ctx.fillText(`EAR:${ear.toFixed(2)}`, (fx + 4) * sx, (fy - 6) * sy);
+}
+
 export default function VideoFeed() {
   const wc = useRef(null);
+  const cv = useRef(null);
   const iv = useRef(null);
   const [on, setOn] = useState(false);
   const [se, setSe] = useState(false);
@@ -87,8 +130,23 @@ export default function VideoFeed() {
   const [cc, setCc] = useState(0);
   const [yc, setYc] = useState(0);
   const [err, setErr] = useState('');
+  const [noFace, setNoFace] = useState(false);
+  const [box, setBox] = useState(null);
+  const [eyePts, setEyePts] = useState(null);
+  const [mouthPts, setMouthPts] = useState(null);
+
+  const lastGood = useRef({ ear: 0.35, mar: 0.25, st: 'awake' });
 
   useEffect(() => () => iv.current && clearInterval(iv.current), []);
+
+  useEffect(() => {
+    if (!on || !cv.current || !box) return;
+    const ctx = cv.current.getContext('2d');
+    const rect = cv.current.parentElement.getBoundingClientRect();
+    cv.current.width = rect.width;
+    cv.current.height = rect.height;
+    drawFace(ctx, 320, 240, box, eyePts, mouthPts, ear, mar, cc);
+  }, [on, box, eyePts, mouthPts, ear, mar, cc]);
 
   const detect = useCallback(async () => {
     const raw = wc.current?.getScreenshot();
@@ -112,10 +170,16 @@ export default function VideoFeed() {
       if (!res.ok) return;
       const d = await res.json();
       if (d.face_detected) {
+        setNoFace(false);
         setEar(d.ear); setMar(d.mar);
         setPerclos(d.perclos * 100); setConf(d.confidence * 100);
         setSt(d.status); setCc(d.close_counter); setYc(d.yawn_counter);
+        setBox(d.face_box); setEyePts(d.eye_points); setMouthPts(d.mouth_points);
+        lastGood.current = { ear: d.ear, mar: d.mar, st: d.status, cc: d.close_counter, yc: d.yawn_counter, conf: d.confidence, perclos: d.perclos };
         driverAPI.sendDetection(d).catch(() => {});
+      } else {
+        setNoFace(true);
+        setErr('Face lost — stay in camera view');
       }
     } catch { setErr('ML API unavailable'); }
   }, []);
@@ -123,7 +187,7 @@ export default function VideoFeed() {
   const start = async () => {
     try {
       await driverAPI.startSession();
-      setSe(true); setOn(true);
+      setSe(true); setOn(true); setNoFace(false);
       setTimeout(detect, 100);
       iv.current = setInterval(detect, CAPTURE_INTERVAL);
     } catch (_) {}
@@ -131,13 +195,21 @@ export default function VideoFeed() {
 
   const stop = async () => {
     if (iv.current) { clearInterval(iv.current); iv.current = null; }
-    setOn(false);
+    setOn(false); setNoFace(false); setErr(''); setBox(null);
     try { await driverAPI.endSession(); } catch (_) {}
   };
 
-  const isAlert = st === 'drowsy' || st === 'high_risk' || st === 'critical' || st === 'microsleep';
-  const ec = ear >= EAR_LOW ? LV[0] : ear >= EAR_CLOSED ? LV[2] : LV[4];
-  const mc = mar >= MAR_YAWN ? LV[2] : LV[0];
+  const displaySt = noFace ? lastGood.current.st : st;
+  const displayEar = noFace ? lastGood.current.ear : ear;
+  const displayMar = noFace ? lastGood.current.mar : mar;
+  const displayPl = noFace ? (lastGood.current.perclos || 0) * 100 : perclos;
+  const displayCc = noFace ? (lastGood.current.cc || 0) : cc;
+  const displayYc = noFace ? (lastGood.current.yc || 0) : yc;
+  const displayConf = noFace ? ((lastGood.current.conf || 0) * 100) : conf;
+
+  const isAlert = ['drowsy', 'high_risk', 'critical', 'microsleep'].includes(displaySt);
+  const ec = displayEar >= EAR_LOW ? LV[0] : displayEar >= EAR_CLOSED ? LV[2] : LV[4];
+  const mc = displayMar >= MAR_YAWN ? LV[2] : LV[0];
 
   return (
     <div style={{
@@ -147,10 +219,11 @@ export default function VideoFeed() {
       <div style={{ position: 'relative', background: '#0f172a', aspectRatio: '4/3', overflow: 'hidden' }}>
         <Webcam ref={wc} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           screenshotFormat="image/jpeg" mirrored videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
+        <canvas ref={cv} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 3 }} />
 
         {!on && (
           <div style={{
-            position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.75)',
+            position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.75)', zIndex: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <p style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>
@@ -159,75 +232,120 @@ export default function VideoFeed() {
           </div>
         )}
 
+        {on && noFace && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 4,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.65)',
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#f59e0b', textAlign: 'center', padding: '0 20px', lineHeight: 1.3 }}>
+              FACE NOT VISIBLE
+            </div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center', padding: '0 20px' }}>
+              Move to center of camera frame
+            </div>
+            <div style={{
+              marginTop: 12, width: 180, height: 3, background: 'rgba(255,255,255,0.08)',
+              borderRadius: 2, overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%', width: '60%', background: '#ef4444', borderRadius: 2,
+                animation: 'pulse 0.8s ease-in-out infinite',
+              }} />
+            </div>
+          </div>
+        )}
+
+        {on && !noFace && isAlert && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 5,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: `radial-gradient(ellipse at center, ${LV[4]}33 0%, transparent 70%)`,
+            animation: 'af 0.6s ease-in-out infinite',
+          }}>
+            <div style={{
+              fontSize: displaySt === 'critical' || displaySt === 'high_risk' ? 26 : 20,
+              fontWeight: 900, color: '#fff', textShadow: `0 0 30px ${LV[4]}, 0 0 60px ${LV[4]}44`,
+              textAlign: 'center', padding: '0 16px', lineHeight: 1.3,
+            }}>
+              {pick(STATE_WARN[displaySt] || [displaySt])}
+            </div>
+          </div>
+        )}
+
         {on && (
-          <>
-            {isAlert && (
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 5,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: `radial-gradient(ellipse at center, ${LV[4]}33 0%, transparent 70%)`,
-                animation: 'af 0.6s ease-in-out infinite',
-              }}>
-                <div style={{
-                  fontSize: st === 'critical' || st === 'high_risk' ? 26 : 20,
-                  fontWeight: 900, color: '#fff', textShadow: `0 0 30px ${LV[4]}, 0 0 60px ${LV[4]}44`,
-                  textAlign: 'center', padding: '0 16px', lineHeight: 1.3,
-                }}>
-                  {pick(STATE_WARN[st] || [st])}
-                </div>
-              </div>
-            )}
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '6px 10px',
-              background: isAlert ? 'linear-gradient(#000000cc, transparent)' : 'linear-gradient(rgba(0,0,0,0.6), transparent)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isAlert ? LV[4] : LV[0],
-                  animation: isAlert ? 'pulse 0.4s ease-in-out infinite' : 'pulse 1.5s ease-in-out infinite' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>LIVE</span>
-              </div>
-              <div style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
-                background: isAlert ? `${LV[4]}25` : `${LV[0]}25`,
-                color: isAlert ? LV[4] : LV[0], textTransform: 'uppercase',
-              }}>
-                {st.replace('_', ' ')}
-              </div>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 6,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '6px 10px',
+            background: isAlert ? 'linear-gradient(#000000cc, transparent)' : 'linear-gradient(rgba(0,0,0,0.6), transparent)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%',
+                background: noFace ? LV[2] : isAlert ? LV[4] : LV[0],
+                animation: 'pulse 0.6s ease-in-out infinite',
+              }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>
+                {noFace ? 'NO FACE' : 'LIVE'}
+              </span>
             </div>
             <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-              background: 'linear-gradient(transparent, rgba(0,0,0,0.9))',
-              padding: '24px 10px 8px', display: 'flex', gap: 8,
+              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
+              background: `${isAlert ? LV[4] : noFace ? LV[2] : LV[0]}25`,
+              color: isAlert ? LV[4] : noFace ? LV[2] : LV[0],
+              textTransform: 'uppercase',
             }}>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: ec }}>{ear.toFixed(2)}</div>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>EAR</div>
-              </div>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: mc }}>{mar.toFixed(2)}</div>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>MAR</div>
-              </div>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{
-                  fontSize: 16, fontWeight: 800,
-                  color: perclos > 30 ? LV[4] : perclos > 10 ? LV[2] : LV[0],
-                }}>{perclos.toFixed(0)}%</div>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>PERCLOS</div>
-              </div>
+              {noFace ? 'Unavailable' : displaySt.replace('_', ' ')}
             </div>
-          </>
+          </div>
+        )}
+
+        {on && (
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 6,
+            background: 'linear-gradient(transparent, rgba(0,0,0,0.9))',
+            padding: '24px 10px 8px', display: 'flex', gap: 8,
+          }}>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: ec }}>{displayEar.toFixed(2)}</div>
+              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>EAR</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: mc }}>{displayMar.toFixed(2)}</div>
+              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>MAR</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{
+                fontSize: 16, fontWeight: 800,
+                color: displayPl > 30 ? LV[4] : displayPl > 10 ? LV[2] : LV[0],
+              }}>{displayPl.toFixed(0)}%</div>
+              <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>PERCLOS</div>
+            </div>
+          </div>
         )}
       </div>
 
       {on && (
         <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <WarningBar icon="👁" label="Eyes (EAR)" value={ear} warns={EAR_WARN} />
-          <WarningBar icon="👄" label="Mouth (MAR)" value={mar} warns={MAR_WARN} />
-          <WarningBar icon="📊" label="Fatigue (PERCLOS)" value={perclos} warns={PERCLOS_WARN} />
+          <WarningBar icon="👁" label="Eyes (EAR)" value={displayEar} warns={EAR_WARN} />
+          <WarningBar icon="👄" label="Mouth (MAR)" value={displayMar} warns={MAR_WARN} />
+          <WarningBar icon="📊" label="Fatigue (PERCLOS)" value={displayPl} warns={PERCLOS_WARN} />
 
-          {isAlert && (
+          {noFace && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+              padding: '10px', marginTop: 4, borderRadius: 8,
+              background: `${LV[2]}18`, border: `1.5px solid ${LV[2]}44`,
+              animation: 'af 1s ease-in-out infinite',
+            }}>
+              <AlertTriangle size={18} color={LV[2]} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: LV[2] }}>
+                Face not detected! Stay in frame
+              </span>
+            </div>
+          )}
+
+          {isAlert && !noFace && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
               padding: '10px', marginTop: 4, borderRadius: 8,
@@ -236,35 +354,35 @@ export default function VideoFeed() {
             }}>
               <AlertTriangle size={18} color={LV[4]} />
               <span style={{ fontSize: 13, fontWeight: 800, color: LV[4] }}>
-                {pick(STATE_WARN[st] || [st])}
+                {pick(STATE_WARN[displaySt] || [displaySt])}
               </span>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>EYES: {cc}f / 90f</div>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>EYES: {displayCc}f / 90f</div>
               <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: LV[4], width: `${Math.min(cc / 90 * 100, 100)}%`, transition: 'width 0.2s' }} />
+                <div style={{ height: '100%', background: LV[4], width: `${Math.min(displayCc / 90 * 100, 100)}%`, transition: 'width 0.2s' }} />
               </div>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>YAWN: {yc}f / 15f</div>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>YAWN: {displayYc}f / 15f</div>
               <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: LV[2], width: `${Math.min(yc / 15 * 100, 100)}%`, transition: 'width 0.2s' }} />
+                <div style={{ height: '100%', background: LV[2], width: `${Math.min(displayYc / 15 * 100, 100)}%`, transition: 'width 0.2s' }} />
               </div>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>CONF: {conf.toFixed(0)}%</div>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>CONF: {displayConf.toFixed(0)}%</div>
               <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: conf > 70 ? LV[4] : conf > 40 ? LV[2] : LV[0], width: `${conf}%`, transition: 'width 0.2s' }} />
+                <div style={{ height: '100%', background: displayConf > 70 ? LV[4] : displayConf > 40 ? LV[2] : LV[0], width: `${displayConf}%`, transition: 'width 0.2s' }} />
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {err && (
+      {err && !noFace && (
         <div style={{ fontSize: 10, color: LV[2], textAlign: 'center', padding: '4px 10px' }}>{err}</div>
       )}
 
