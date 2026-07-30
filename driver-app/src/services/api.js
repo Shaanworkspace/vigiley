@@ -13,20 +13,21 @@ const notifyLoading = (val) => loadingCallbacks.forEach(cb => cb(val));
 
 let activeRequests = 0;
 let waking = false;
+let wakePromise = null;
 
 const wakeUp = async () => {
-  if (waking) return;
+  if (waking) return wakePromise;
   waking = true;
-  try {
-    await axios.get(`${BASE_URL}/wake-up`, { timeout: 55000 });
-  } catch (_) {}
-  waking = false;
+  wakePromise = axios.get(`${BASE_URL}/wake-up`, { timeout: 55000 })
+    .then(() => { waking = false; })
+    .catch(() => { waking = false; });
+  return wakePromise;
 };
 
 api.interceptors.request.use(async (config) => {
   if (activeRequests === 0) {
     notifyLoading(true);
-    wakeUp();
+    await wakeUp();
   }
   activeRequests++;
   const token = localStorage.getItem('token');
