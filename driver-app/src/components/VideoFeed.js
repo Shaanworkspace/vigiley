@@ -5,9 +5,9 @@ import { Play, Square, Activity, Camera } from 'lucide-react';
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
 const CAPTURE_INTERVAL = 2500;
-const EAR_CLOSED = 0.21;
+const EAR_CLOSED = 0.20;
 const EAR_LOW = 0.25;
-const MAR_YAWN = 0.55;
+const MAR_YAWN = 0.50;
 
 const STATE_META = {
   awake:        { label: 'Awake',        color: '#22c55e', risk: 0 },

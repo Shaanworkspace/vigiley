@@ -5,7 +5,7 @@ import threading
 import os
 from feature_extraction import FeatureExtractor
 from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, \
-    FRAMES_CLOSED, FRAMES_MICROSLEEP, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
+    FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
 
 STATE_COLORS = {
     'awake': (0, 255, 0),

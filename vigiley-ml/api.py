@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from feature_extraction import FeatureExtractor
 from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, \
-    FRAMES_CLOSED, FRAMES_MICROSLEEP, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
+    FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
 from websocket_client import AlertWebSocketClient
 
 app = Flask(__name__)
@@ -121,7 +121,7 @@ def thresholds():
         'ear_low': EAR_LOW,
         'mar_yawn': MAR_THRESHOLD,
         'frames_closed': FRAMES_CLOSED,
-        'frames_microsleep': FRAMES_MICROSLEEP,
+        'frames_microsleep': FRAMES_MICRO,
         'frames_drowsy': FRAMES_DROWSY,
         'frames_critical': FRAMES_CRITICAL,
         'frames_yawn': FRAMES_YAWN,

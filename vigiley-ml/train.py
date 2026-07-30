@@ -1,7 +1,7 @@
 import numpy as np
 import json
 from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, \
-    FRAMES_CLOSED, FRAMES_MICROSLEEP, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
+    FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
 
 
 def generate_synthetic_dataset(n_samples=10000):
@@ -34,7 +34,7 @@ def evaluate():
     print(f'  EAR low:       {EAR_LOW}')
     print(f'  MAR yawn:      > {MAR_THRESHOLD}')
     print(f'  Frames closed:     {FRAMES_CLOSED}')
-    print(f'  Frames microsleep: {FRAMES_MICROSLEEP}')
+    print(f'  Frames microsleep: {FRAMES_MICRO}')
     print(f'  Frames drowsy:     {FRAMES_DROWSY}')
     print(f'  Frames critical:   {FRAMES_CRITICAL}')
     print(f'  Frames yawn:       {FRAMES_YAWN}')
@@ -88,7 +88,7 @@ def evaluate():
         'thresholds': {
             'ear_closed': EAR_THRESHOLD, 'ear_low': EAR_LOW,
             'mar_yawn': MAR_THRESHOLD,
-            'frames_closed': FRAMES_CLOSED, 'frames_microsleep': FRAMES_MICROSLEEP,
+            'frames_closed': FRAMES_CLOSED,       'frames_microsleep': FRAMES_MICRO,
             'frames_drowsy': FRAMES_DROWSY, 'frames_critical': FRAMES_CRITICAL,
             'frames_yawn': FRAMES_YAWN,
         },

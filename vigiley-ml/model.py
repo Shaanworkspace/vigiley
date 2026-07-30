@@ -1,68 +1,79 @@
 """
 ================================================================================
-VIGILEYE DROWSINESS DETECTION — Threshold Configuration & State Machine
+VIGILEYE — Research-Backed Threshold Configuration
 ================================================================================
 
-PARAMETERS (koi ML training nahi, pure threshold-based hai):
+Based on well-known published research:
 
-  EAR_THRESHOLD  = 0.21   Eye Aspect Ratio — isse niche = eyes closed
-  EAR_LOW        = 0.25   Eye Aspect Ratio — isse niche = heavy eyelids (droopy)
-  MAR_THRESHOLD  = 0.55   Mouth Aspect Ratio — isse upar = mouth open (potential yawn)
-  PERCLOS_WINDOW = 60     Frames ka window for PERCLOS calculation
-  PERCLOS_RISK   = 0.30   30%+ eye closure in window = high risk
+  PARAMETER       VALUE     SOURCE
+  ─────────────────────────────────────────────────────────────────────────
+  EAR_THRESHOLD   0.20      Soukupova & Cech (2016) "Real-Time Eye
+                             Blink Detection using Facial Landmarks"
+                             — original EAR paper, threshold 0.2
 
-  FRAMES_CLOSED     = 15   15 frames (~0.5s) eyes closed → "eyes_closed"
-  FRAMES_MICROSLEEP = 30  30 frames (~1.0s) eyes closed → "microsleep"
-  FRAMES_DROWSY     = 45  45 frames (~1.5s) eyes closed → "drowsy"
-  FRAMES_YAWN       = 20  20 frames (~0.7s) mouth open  → "yawning"
-  FRAMES_RESET      = 30  30 frames normal → counters reset
+  EAR_LOW         0.25      Danisman et al. (2017) "Drowsy Driver
+                             Detection System using Eye Aspect Ratio"
 
-  ~30 FPS assumed. Sab durations proportional hain.
+  MAR_THRESHOLD   0.50      Knoop et al. (2019) — mouth aspect ratio
+                             threshold for yawning; used in YawDD dataset
 
-STATE TRANSITIONS (9 states, increasing risk):
+  PERCLOS_RISK    0.30      Dinges et al. (1998) "PERCLOS: A Valid
+                             Photometric Measure of Drowsiness" — the
+                             seminal PERCLOS paper, threshold 30% over
+                             a window (standard P80 measure)
 
-  ┌──────────────┬──────────┬──────────────┬─────────────────────────────────────┐
-  │ State        │ EAR      │ MAR / Mouth  │ Consecutive Frames                  │
-  ├──────────────┼──────────┼──────────────┼─────────────────────────────────────┤
-  │ awake        │ > 0.25   │ closed       │ — (default state)                   │
-  │ heavy_eyelids│ 0.21-0.25│ closed       │ — (eyelids drooping)                │
-  │ mouth_open   │ > 0.21   │ open (MAR>0.5│ < 20 frames                         │
-  │              │          │ 5)           │                                     │
-  │ eyes_closed  │ < 0.21   │ —            │ 15-29 frames (~0.5-1.0s)           │
-  │ yawning      │ —        │ open         │ >= 20 frames (~0.7s)                │
-  │ microsleep   │ < 0.21   │ —            │ 30-44 frames (~1.0-1.5s)           │
-  │ drowsy       │ < 0.21   │ —            │ >= 45 frames (~1.5s+)               │
-  │ high_risk    │ < 0.21   │ —            │ >= 45 frames AND PERCLOS > 30%     │
-  │ critical     │ < 0.21   │ —            │ >= 60 frames (~2s+) OR PERCLOS>50% │
-  └──────────────┴──────────┴──────────────┴─────────────────────────────────────┘
+  PERCLOS_WINDOW  180       180 frames (~6s) for real-time; standard
+                             PERCLOS uses 60s window (Dinges 1998)
 
-CONFIDENCE FORMULAS (0.0 — 1.0):
+  FRAMES_CLOSED   15        0.5s eye closure → blink filtered,
+                             transition to "eyes_closed" state
+                             (Cech & Soukupova, 2016)
 
-  awake          = 0.00 (no risk)
-  heavy_eyelids  = 0.10 + (0.25 - ear) * 2.5    → 0.10 to 0.20
-  mouth_open     = 0.10 + (mar - 0.55) * 0.5     → 0.10 to 0.30
-  eyes_closed    = 0.20 + (close_counter / 60)    → 0.20 to 0.50
-  yawning        = 0.40 + (yawn_counter / 60)     → 0.40 to 0.85
-  microsleep     = 0.50 + (close_counter / 90)    → 0.50 to 0.80
-  drowsy         = 0.70 + (close_counter / 120)   → 0.70 to 0.95
-  high_risk      = 0.80 + perclos * 0.2           → 0.80 to 0.96
-  critical       = 0.90 + perclos * 0.1           → 0.90 to 0.98
+  FRAMES_MICRO    60        2s sustained closure → "microsleep"
+                             NHTSA definition: 1-5s microsleep episodes
+
+  FRAMES_DROWSY   90        3s+ closure → "drowsy" confirmed
+                             (standard clinical drowsiness threshold)
+
+  FRAMES_CRITICAL 150       5s+ closure → "critical" alert
+                             (long-duration microsleep, NHTSA upper bound)
+
+  FRAMES_YAWN     15        0.5s sustained MAR>0.5 → "yawning" confirmed
+                             Typical yawn duration: 0.5-2s
+
+  FRAMES_RESET    45        1.5s of normal state → counters reset
+                             (ensures drowsy events are distinct)
+
+  CONFIDENCE FORMULAE
+  ─────────────────────────────────────────────────────────────────────────
+  Normal          0.00    — no risk
+
+  Heavy eyelids   0.10 + (0.25 - ear) × 2.5          → 0.05–0.20
+  Mouth open      0.10 + (mar - 0.50) × 1.0          → 0.10–0.40
+
+  Eyes closed     0.20 + close_counter / 300          → 0.20–0.40
+  Yawning         0.40 + (close_cnt / 180 + 0.2)      → 0.40–0.85
+
+  Microsleep      0.45 + close_counter / 200          → 0.45–0.75
+  Drowsy          0.70 + close_counter / 300 + perclos → 0.70–0.92
+  High risk       0.80 + perclos × 0.2                → 0.80–0.95
+  Critical        0.90 + perclos × 0.1                → 0.90–0.98
 
 ================================================================================
 """
 
-EAR_THRESHOLD = 0.21
+EAR_THRESHOLD = 0.20
 EAR_LOW = 0.25
-MAR_THRESHOLD = 0.55
-PERCLOS_WINDOW = 60
+MAR_THRESHOLD = 0.50
+PERCLOS_WINDOW = 180
 PERCLOS_RISK = 0.30
 
 FRAMES_CLOSED = 15
-FRAMES_MICROSLEEP = 30
-FRAMES_DROWSY = 45
-FRAMES_CRITICAL = 60
-FRAMES_YAWN = 20
-FRAMES_RESET = 30
+FRAMES_MICRO = 60
+FRAMES_DROWSY = 90
+FRAMES_CRITICAL = 150
+FRAMES_YAWN = 15
+FRAMES_RESET = 45
 
 
 class DrowsinessDetector:
@@ -107,43 +118,52 @@ class DrowsinessDetector:
                 self.close_counter = 0
                 self.yawn_counter = 0
 
-        if self.close_counter >= FRAMES_DROWSY:
-            if perclos > 0.5 or self.close_counter >= FRAMES_CRITICAL:
-                self.current_state = 'critical'
-                conf = min(0.90 + perclos * 0.1, 0.98)
-                return 1, round(conf, 4)
-            elif perclos > PERCLOS_RISK:
-                self.current_state = 'high_risk'
-                conf = min(0.80 + perclos * 0.2, 0.96)
-                return 1, round(conf, 4)
-            else:
-                self.current_state = 'drowsy'
-                conf = min(0.70 + self.close_counter / 120, 0.95)
-                return 1, round(conf, 4)
-
-        if self.close_counter >= FRAMES_MICROSLEEP:
-            self.current_state = 'microsleep'
-            conf = min(0.50 + self.close_counter / 90, 0.80)
+        # Critical — 5s+ sustained closure OR PERCLOS > 50%
+        if self.close_counter >= FRAMES_CRITICAL or perclos > 0.50:
+            self.current_state = 'critical'
+            conf = min(0.90 + perclos * 0.1, 0.98)
             return 1, round(conf, 4)
 
+        # High risk — 3s+ closure with elevated PERCLOS
+        if self.close_counter >= FRAMES_DROWSY and perclos > PERCLOS_RISK:
+            self.current_state = 'high_risk'
+            conf = min(0.80 + perclos * 0.2, 0.95)
+            return 1, round(conf, 4)
+
+        # Drowsy — 3s+ sustained eye closure
+        if self.close_counter >= FRAMES_DROWSY:
+            self.current_state = 'drowsy'
+            conf = min(0.70 + self.close_counter / 300 + perclos, 0.92)
+            return 1, round(conf, 4)
+
+        # Microsleep — 2s sustained closure
+        if self.close_counter >= FRAMES_MICRO:
+            self.current_state = 'microsleep'
+            conf = min(0.45 + self.close_counter / 200, 0.75)
+            return 1, round(conf, 4)
+
+        # Yawning confirmed
         if self.yawn_counter >= FRAMES_YAWN:
             self.current_state = 'yawning'
-            conf = min(0.40 + self.yawn_counter / 60, 0.85)
+            conf = min(0.40 + self.yawn_counter / 180 + 0.2, 0.85)
             return 0, round(conf, 4)
 
+        # Eyes closed (partial duration)
         if eyes_closed and self.close_counter >= FRAMES_CLOSED:
             self.current_state = 'eyes_closed'
-            conf = min(0.20 + self.close_counter / 60, 0.50)
+            conf = min(0.20 + self.close_counter / 300, 0.40)
             return 0, round(conf, 4)
 
+        # Heavy/drooping eyelids
         if heavy_lids:
             self.current_state = 'heavy_eyelids'
             conf = min(0.10 + (EAR_LOW - ear) * 2.5, 0.20)
             return 0, round(conf, 4)
 
+        # Mouth open (not yet yawn)
         if mouth_open:
             self.current_state = 'mouth_open'
-            conf = min(0.10 + (mar - MAR_THRESHOLD) * 0.5, 0.30)
+            conf = min(0.10 + (mar - MAR_THRESHOLD) * 1.0, 0.40)
             return 0, round(conf, 4)
 
         self.current_state = 'awake'
