@@ -12,9 +12,10 @@ export const onLoadingChange = (cb) => { loadingCallbacks.push(cb); return () =>
 const notifyLoading = (val) => loadingCallbacks.forEach(cb => cb(val));
 
 let activeRequests = 0;
+let hideTimer = null;
 
 api.interceptors.request.use((config) => {
-  if (activeRequests === 0) notifyLoading(true);
+  if (!config._noLoading && activeRequests === 0) notifyLoading(true);
   activeRequests++;
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -24,12 +25,20 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => {
     activeRequests--;
-    if (activeRequests <= 0) { activeRequests = 0; notifyLoading(false); }
+    if (activeRequests <= 0) {
+      activeRequests = 0;
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => notifyLoading(false), 300);
+    }
     return response;
   },
   (error) => {
     activeRequests--;
-    if (activeRequests <= 0) { activeRequests = 0; notifyLoading(false); }
+    if (activeRequests <= 0) {
+      activeRequests = 0;
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => notifyLoading(false), 300);
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -46,13 +55,13 @@ export const authAPI = {
 };
 
 export const adminAPI = {
-  getDashboard: () => api.get('/admin/dashboard'),
-  getDrivers: () => api.get('/admin/drivers'),
-  getDriverDetail: (id) => api.get(`/admin/drivers/${id}`),
-  getAlerts: (params) => api.get('/admin/alerts', { params }),
-  acknowledgeAlert: (id) => api.put(`/admin/alerts/${id}/acknowledge`),
-  getReportSummary: (params) => api.get('/reports/summary', { params }),
-  getDriverReport: (id) => api.get(`/reports/driver/${id}`),
+  getDashboard: () => api.get('/admin/dashboard', { _noLoading: true }),
+  getDrivers: () => api.get('/admin/drivers', { _noLoading: true }),
+  getDriverDetail: (id) => api.get(`/admin/drivers/${id}`, { _noLoading: true }),
+  getAlerts: (params) => api.get('/admin/alerts', { params, _noLoading: true }),
+  acknowledgeAlert: (id) => api.put(`/admin/alerts/${id}/acknowledge`, null, { _noLoading: true }),
+  getReportSummary: (params) => api.get('/reports/summary', { params, _noLoading: true }),
+  getDriverReport: (id) => api.get(`/reports/driver/${id}`, { _noLoading: true }),
 };
 
 export default api;

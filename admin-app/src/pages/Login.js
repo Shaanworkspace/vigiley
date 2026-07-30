@@ -19,7 +19,7 @@ export default function Login() {
     setError(''); setLoading(true);
     try { await login(email, password); navigate('/admin/dashboard'); }
     catch (err) {
-      if (!err.response) setError('Server is waking up... Please try again in 20-30 seconds.');
+      if (!err.response) setError('Connection timed out. Please try again.');
       else setError(err.response?.data?.message || 'Invalid credentials');
     }
     finally { setLoading(false); }
