@@ -30,12 +30,25 @@ export default function Dashboard() {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [vis, setVis] = useState(false);
+  const [toasts, setToasts] = useState([]);
   const { liveAlerts } = useSocket();
   const navigate = useNavigate();
   const lr = useRef(null);
+  const prevLen = useRef(0);
 
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (liveAlerts.length > 0 && stats) setStats(p => ({ ...p, totalAlerts: p.totalAlerts + liveAlerts.length, unacknowledgedAlerts: p.unacknowledgedAlerts + liveAlerts.length })); }, [liveAlerts]);
+  useEffect(() => {
+    if (liveAlerts.length > prevLen.current) {
+      const newAlerts = liveAlerts.slice(0, liveAlerts.length - prevLen.current);
+      newAlerts.forEach((a, i) => {
+        const id = Date.now() + i;
+        setToasts(p => [...p, { ...a, _toastId: id }]);
+        setTimeout(() => setToasts(p => p.filter(t => t._toastId !== id)), 4000);
+      });
+    }
+    prevLen.current = liveAlerts.length;
+    if (liveAlerts.length > 0 && stats) setStats(p => ({ ...p, totalAlerts: p.totalAlerts + liveAlerts.length, unacknowledgedAlerts: p.unacknowledgedAlerts + liveAlerts.length }));
+  }, [liveAlerts]);
   useEffect(() => { if (lr.current) { lr.current.scrollTop = 0; } }, [liveAlerts]);
 
   const load = async () => {
@@ -56,7 +69,7 @@ export default function Dashboard() {
     </div>
   );
 
-  const allAlerts = [...(liveAlerts || []), ...(stats?.recentAlerts || [])].slice(0, 20);
+  const allAlerts = [...(liveAlerts || []), ...(stats?.recentAlerts || [])].slice(0, 5);
 
   return (
     <div style={{ minHeight: '100vh', background: '#020617', position: 'relative' }}>
@@ -65,6 +78,42 @@ export default function Dashboard() {
         background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139,92,246,0.12), transparent), radial-gradient(ellipse 50% 40% at 80% 30%, rgba(59,130,246,0.06), transparent)',
         pointerEvents: 'none', zIndex: 0,
       }} />
+      {/* Toast Notifications */}
+      <div style={{ position: 'fixed', top: 80, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
+        {toasts.map(t => {
+          const sev = t.severity || 'medium';
+          const initials = (t.driver?.name || 'DR').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+          return (
+            <div key={t._toastId} style={{
+              background: '#0f172a', border: `1px solid ${RC[sev]}44`, borderLeft: `3px solid ${RC[sev]}`,
+              borderRadius: 12, padding: '10px 14px', minWidth: 280, maxWidth: 360,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${RC[sev]}22`,
+              animation: 'tf 0.35s cubic-bezier(0.16,1,0.3,1), tfOut 0.3s cubic-bezier(0.16,1,0.3,1) 3.7s forwards',
+              pointerEvents: 'auto',
+            }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  background: `${RC[sev]}22`, color: RC[sev],
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, fontWeight: 800,
+                }}>{initials}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontWeight: 700, fontSize: 12 }}>{t.driver?.name || 'Driver'}</span>
+                    <span style={{ padding: '1px 7px', borderRadius: 10, fontSize: 8, fontWeight: 700, color: '#fff', textTransform: 'uppercase', background: RC[sev] }}>{sev}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.3 }}>
+                    <span style={{ textTransform: 'capitalize', fontWeight: 600, color: '#cbd5e1' }}>{t.type?.replace(/_/g, ' ')}</span>
+                    {t.sds && <span style={{ color: RC[sev], marginLeft: 4 }}>SDS {t.sds}%</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Navbar />
         <div style={{ maxWidth: 1360, margin: '0 auto', padding: '20px 24px 40px' }}>
@@ -427,6 +476,8 @@ export default function Dashboard() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 50% { opacity: 0.4; } }
         @keyframes sf { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes tf { from { opacity: 0; transform: translateX(60px) scale(0.9); } to { opacity: 1; transform: translateX(0) scale(1); } }
+        @keyframes tfOut { to { opacity: 0; transform: translateX(40px) scale(0.95); } }
       `}</style>
     </div>
   );

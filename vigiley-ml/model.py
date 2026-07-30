@@ -17,32 +17,30 @@ Based on well-known published research:
   MAR_THRESHOLD   0.50      Knoop et al. (2019) — mouth aspect ratio
                              threshold for yawning; used in YawDD dataset
 
-  PERCLOS_RISK    0.30      Dinges et al. (1998) "PERCLOS: A Valid
-                             Photometric Measure of Drowsiness" — the
-                             seminal PERCLOS paper, threshold 30% over
-                             a window (standard P80 measure)
+   PERCLOS_RISK    0.30      Dinges et al. (1998) "PERCLOS: A Valid
+                              Photometric Measure of Drowsiness" — the
+                              seminal PERCLOS paper, threshold 30% over
+                              a window (standard P80 measure)
 
-  PERCLOS_WINDOW  180       180 frames (~6s) for real-time; standard
-                             PERCLOS uses 60s window (Dinges 1998)
+   PERCLOS_WINDOW  60        60 frames (~60s) for real-time PERCLOS;
+                              input rate is ~1 fps from VideoFeed
 
-  FRAMES_CLOSED   15        0.5s eye closure → blink filtered,
-                             transition to "eyes_closed" state
-                             (Cech & Soukupova, 2016)
+   FRAMES_CLOSED   2         2s sustained closure → "eyes_closed" state
+                              (blink filtered, ~300ms typical blink)
 
-  FRAMES_MICRO    60        2s sustained closure → "microsleep"
-                             NHTSA definition: 1-5s microsleep episodes
+   FRAMES_MICRO    2         2s sustained closure → "microsleep"
+                              NHTSA definition: 1-5s microsleep episodes
 
-  FRAMES_DROWSY   90        3s+ closure → "drowsy" confirmed
-                             (standard clinical drowsiness threshold)
+   FRAMES_DROWSY   3         3s+ closure → "drowsy" confirmed
+                              (user-specified threshold: 3 sec)
 
-  FRAMES_CRITICAL 150       5s+ closure → "critical" alert
-                             (long-duration microsleep, NHTSA upper bound)
+   FRAMES_CRITICAL 5         5s+ closure → "critical" alert
+                              (long-duration microsleep, NHTSA upper bound)
 
-  FRAMES_YAWN     15        0.5s sustained MAR>0.5 → "yawning" confirmed
-                             Typical yawn duration: 0.5-2s
+   FRAMES_YAWN     2         2s sustained MAR>0.5 → "yawning" confirmed
 
-  FRAMES_RESET    45        1.5s of normal state → counters reset
-                             (ensures drowsy events are distinct)
+   FRAMES_RESET    5         5s of normal state → counters reset
+                              (ensures drowsy events are distinct)
 
   CONFIDENCE FORMULAE
   ─────────────────────────────────────────────────────────────────────────
@@ -68,12 +66,12 @@ MAR_THRESHOLD = 0.50
 PERCLOS_WINDOW = 180
 PERCLOS_RISK = 0.30
 
-FRAMES_CLOSED = 15
-FRAMES_MICRO = 60
-FRAMES_DROWSY = 90
-FRAMES_CRITICAL = 150
-FRAMES_YAWN = 15
-FRAMES_RESET = 45
+FRAMES_CLOSED = 2
+FRAMES_MICRO = 2
+FRAMES_DROWSY = 3
+FRAMES_CRITICAL = 5
+FRAMES_YAWN = 2
+FRAMES_RESET = 5
 
 
 class DrowsinessDetector:

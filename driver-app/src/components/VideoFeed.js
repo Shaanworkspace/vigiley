@@ -73,61 +73,8 @@ function WarningBar({ icon, label, value, warns }) {
   );
 }
 
-function drawFace(ctx, w, h, box, eyePts, mouthPts, ear, mar, earClosed) {
-  if (!box) return;
-  const cw = ctx.canvas.width, ch = ctx.canvas.height;
-  const sx = cw / w, sy = ch / h;
-  const [fx, fy, fw, fh] = box;
-
-  const mx = (x) => (w - x) * sx;
-  const my = (y) => y * sy;
-
-  const c = ear < EAR_CLOSED ? '#ef4444' : ear < EAR_LOW ? '#eab308' : '#22c55e';
-
-  ctx.clearRect(0, 0, cw, ch);
-
-  ctx.save();
-  ctx.translate(cw, 0);
-  ctx.scale(-1, 1);
-
-  ctx.strokeStyle = c;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = `${c}66`;
-  ctx.shadowBlur = 12;
-  ctx.strokeRect(fx * sx, fy * sy, fw * sx, fh * sy);
-  ctx.shadowBlur = 0;
-
-  ctx.fillStyle = `${c}18`;
-  ctx.fillRect(fx * sx, fy * sy, fw * sx, fh * sy);
-
-  if (eyePts) {
-    ctx.fillStyle = ear < EAR_CLOSED ? '#ef4444' : '#60a5fa';
-    eyePts.forEach(([x, y]) => {
-      ctx.beginPath();
-      ctx.arc(x * sx, y * sy, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
-  if (mouthPts) {
-    ctx.fillStyle = mar > MAR_YAWN ? '#f59e0b' : '#a78bfa';
-    mouthPts.forEach(([x, y]) => {
-      ctx.beginPath();
-      ctx.arc(x * sx, y * sy, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
-  ctx.restore();
-
-  ctx.font = 'bold 11px monospace';
-  ctx.fillStyle = c;
-  ctx.fillText(`EAR:${ear.toFixed(2)}`, mx(fx + 4), (fy - 6) * sy);
-}
-
 export default function VideoFeed() {
   const wc = useRef(null);
-  const cv = useRef(null);
   const iv = useRef(null);
   const [on, setOn] = useState(false);
   const [se, setSe] = useState(false);
@@ -141,22 +88,10 @@ export default function VideoFeed() {
   const [yc, setYc] = useState(0);
   const [err, setErr] = useState('');
   const [noFace, setNoFace] = useState(false);
-  const [box, setBox] = useState(null);
-  const [eyePts, setEyePts] = useState(null);
-  const [mouthPts, setMouthPts] = useState(null);
 
   const lastGood = useRef({ ear: 0.35, mar: 0.25, st: 'awake' });
 
   useEffect(() => () => iv.current && clearInterval(iv.current), []);
-
-  useEffect(() => {
-    if (!on || !cv.current || !box) return;
-    const ctx = cv.current.getContext('2d');
-    const rect = cv.current.parentElement.getBoundingClientRect();
-    cv.current.width = rect.width;
-    cv.current.height = rect.height;
-    drawFace(ctx, 320, 240, box, eyePts, mouthPts, ear, mar, cc);
-  }, [on, box, eyePts, mouthPts, ear, mar, cc]);
 
   const detect = useCallback(async () => {
     const raw = wc.current?.getScreenshot();
@@ -184,7 +119,6 @@ export default function VideoFeed() {
         setEar(d.ear); setMar(d.mar);
         setPerclos(d.perclos * 100); setConf(d.confidence * 100);
         setSt(d.status); setCc(d.close_counter); setYc(d.yawn_counter);
-        setBox(d.face_box); setEyePts(d.eye_points); setMouthPts(d.mouth_points);
         lastGood.current = { ear: d.ear, mar: d.mar, st: d.status, cc: d.close_counter, yc: d.yawn_counter, conf: d.confidence, perclos: d.perclos };
         driverAPI.sendDetection({
           status: d.status,
@@ -237,8 +171,6 @@ export default function VideoFeed() {
       <div style={{ position: 'relative', background: '#0f172a', aspectRatio: '4/3', overflow: 'hidden' }}>
         <Webcam ref={wc} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           screenshotFormat="image/jpeg" mirrored videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
-        <canvas ref={cv} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 3 }} />
-
         {!on && (
           <div style={{
             position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.75)', zIndex: 4,
