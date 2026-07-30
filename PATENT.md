@@ -2,6 +2,10 @@
 
 ## System: Multi-Modal Driver Drowsiness Detection & Intelligent Alert System
 
+**Applicants:** Shaan Yadav, Shrishti Mangla, Utkarsh Kumar Singh, Shreya Jain  
+**Institution:** KIET Deemed to be University, Ghaziabad  
+**Mentor:** Mr. Mritunjay
+
 ---
 
 ### Patent Title

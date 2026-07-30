@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
 
-dotenv.config();
+dotenv.config({ path: require('path').join(__dirname, '.env') });
 
 const authRoutes = require('./routes/auth');
 const driverRoutes = require('./routes/driver');
@@ -17,7 +17,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
 });

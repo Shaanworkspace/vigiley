@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
+import Navbar from '../components/Navbar';
 import StatCard from '../components/StatCard';
 import { adminAPI } from '../services/api';
+import { ArrowLeft, Activity, Bell, Clock } from 'lucide-react';
 
-const RISK_COLORS = { low: '#4caf50', medium: '#ff9800', high: '#f44336', critical: '#d32f2f' };
+const RC = {low:'#22c55e',medium:'#f59e0b',high:'#ef4444',critical:'#dc2626'};
 
 export default function DriverDetail() {
   const { id } = useParams();
@@ -12,248 +13,108 @@ export default function DriverDetail() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    adminAPI
-      .getDriverDetail(id)
-      .then((res) => setData(res.data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, [id]);
+  useEffect(()=>{adminAPI.getDriverDetail(id).then(r=>setData(r.data)).catch(()=>{}).finally(()=>setLoading(false))},[id]);
 
-  const driver = data?.driver;
-  const activeSession = data?.activeSession;
+  if(loading) return <div style={{minHeight:'100vh',background:'#020617'}}><Navbar/><div style={{textAlign:'center',padding:60,color:'#64748b'}}>Loading…</div></div>;
+  if(!data?.driver) return <div style={{minHeight:'100vh',background:'#020617'}}><Navbar/><div style={{textAlign:'center',padding:60,color:'#64748b'}}>Driver not found</div></div>;
 
-  const statusCounts = {};
-  (data?.stats || []).forEach((s) => { statusCounts[s._id] = s.count; });
+  const dr = data.driver;
+  const sess = data.activeSession;
+  const sc = {};
+  (data.stats||[]).forEach(s=>{sc[s._id]=s.count});
 
   return (
-    <div style={styles.app}>
-      <Sidebar />
-      <div style={styles.main}>
-        <header style={styles.header}>
-          <button style={styles.backBtn} onClick={() => navigate('/admin/drivers')}>
-            ← Back
-          </button>
-          <h1 style={styles.pageTitle}>Driver Details</h1>
-        </header>
+    <div style={{minHeight:'100vh',background:'#020617'}}>
+      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(59,130,246,0.1),transparent)',pointerEvents:'none',zIndex:0}}/>
+      <div style={{position:'relative',zIndex:1}}><Navbar />
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'20px 24px 40px'}}>
+        <button style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'#94a3b8',fontSize:13,fontWeight:500,cursor:'pointer',marginBottom:16}} onClick={()=>navigate('/admin/drivers')}><ArrowLeft size={14}/>Back</button>
 
-        {loading ? (
-          <div style={styles.loading}>Loading...</div>
-        ) : !driver ? (
-          <div style={styles.loading}>Driver not found</div>
-        ) : (
-          <>
-            <div style={styles.profileCard}>
-              <div style={styles.avatar}>{driver.name?.charAt(0) || 'D'}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h2 style={styles.driverName}>{driver.name}</h2>
-                  {activeSession && (
-                    <span style={{ ...styles.riskBadge, background: RISK_COLORS[activeSession.riskLevel] || '#ff9800' }}>
-                      {activeSession.riskLevel}
-                    </span>
-                  )}
-                </div>
-                <p style={styles.driverEmail}>{driver.email}</p>
-                <div style={styles.meta}>
-                  <span>📞 {driver.phone || 'N/A'}</span>
-                  <span>🚗 {driver.vehicleNumber || 'N/A'}</span>
-                  <span>📄 {driver.licenseNumber || 'N/A'}</span>
-                </div>
-              </div>
-              {activeSession && (
-                <div style={styles.sdsGauge}>
-                  <div style={styles.sdsValue}>{activeSession.drowsinessScore?.toFixed(0)}</div>
-                  <div style={styles.sdsLabel}>SDS</div>
-                </div>
-              )}
+        <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:24,display:'flex',alignItems:'center',gap:20,marginBottom:20,backdropFilter:'blur(4px)'}}>
+          <div style={{width:52,height:52,borderRadius:'50%',background:'rgba(59,130,246,0.15)',color:'#93c5fd',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:700}}>{dr.name?.charAt(0)||'D'}</div>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:2}}>
+              <h2 style={{fontSize:20,fontWeight:700}}>{dr.name}</h2>
+              {sess&&<span style={{padding:'2px 10px',borderRadius:20,fontSize:9,fontWeight:600,color:'#fff',textTransform:'uppercase',letterSpacing:'0.5px',background:RC[sess.riskLevel]||'#f59e0b'}}>{sess.riskLevel}</span>}
             </div>
+            <p style={{color:'#64748b',fontSize:13,marginBottom:6}}>{dr.email}</p>
+            <div style={{display:'flex',gap:16,fontSize:12,color:'#475569'}}><span>{dr.phone||'No phone'}</span><span>{dr.vehicleNumber||'No vehicle'}</span><span>{dr.licenseNumber||'No license'}</span></div>
+          </div>
+          {sess&&<div style={{textAlign:'center',padding:'10px 20px',background:'rgba(255,255,255,0.03)',borderRadius:12,border:'1px solid rgba(255,255,255,0.06)'}}>
+            <div style={{fontSize:30,fontWeight:700}}>{sess.drowsinessScore?.toFixed(0)}</div>
+            <div style={{fontSize:9,color:'#475569',textTransform:'uppercase',letterSpacing:'1px'}}>SDS</div>
+          </div>}
+        </div>
 
-            <div style={styles.statsGrid}>
-              <StatCard label="Normal" value={statusCounts.normal || 0} color="#4caf50" />
-              <StatCard label="Yawning" value={statusCounts.yawning || 0} color="#ff9800" />
-              <StatCard label="Eyes Closed" value={statusCounts.eyes_closed || 0} color="#f44336" />
-              <StatCard label="Drowsy" value={statusCounts.drowsy || 0} color="#d32f2f" />
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:20}}>
+          <StatCard label="Normal" value={sc.normal||0} color="#22c55e" icon={Activity}/>
+          <StatCard label="Yawning" value={sc.yawning||0} color="#f59e0b"/>
+          <StatCard label="Eyes Closed" value={sc.eyes_closed||0} color="#ef4444"/>
+          <StatCard label="Drowsy" value={sc.drowsy||0} color="#dc2626"/>
+        </div>
+
+        {sess&&<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:20}}>
+          <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+            <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>Session</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#64748b'}}>Started</span><span>{new Date(sess.startTime).toLocaleString()}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#64748b'}}>Duration</span><span>{Math.floor((Date.now()-new Date(sess.startTime))/60000)} min</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#64748b'}}>Detections</span><span>{sess.detectionCount||0}</span></div>
             </div>
-
-            {activeSession && (
-              <div style={styles.row}>
-                <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>Active Session</h3>
-                  <div style={styles.sessionInfo}>
-                    <div style={styles.sessionItem}>
-                      <span style={styles.sessionLabel}>Started</span>
-                      <span>{new Date(activeSession.startTime).toLocaleString()}</span>
-                    </div>
-                    <div style={styles.sessionItem}>
-                      <span style={styles.sessionLabel}>Duration</span>
-                      <span>{Math.floor((Date.now() - new Date(activeSession.startTime)) / 60000)} min</span>
-                    </div>
-                    <div style={styles.sessionItem}>
-                      <span style={styles.sessionLabel}>Detections</span>
-                      <span>{activeSession.detectionCount || 0}</span>
-                    </div>
-                  </div>
-                </div>
-                <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>Alert Summary</h3>
-                  <div style={styles.sessionInfo}>
-                    <div style={styles.sessionItem}>
-                      <span style={styles.sessionLabel}>Total</span>
-                      <span style={{ fontWeight: 700 }}>{activeSession.totalAlerts || 0}</span>
-                    </div>
-                    <div style={styles.sessionItem}>
-                      <span style={styles.sessionLabel}>Critical</span>
-                      <span style={{ color: '#d32f2f', fontWeight: 700 }}>{activeSession.criticalAlerts || 0}</span>
-                    </div>
-                    <div style={styles.sessionItem}>
-                      <span style={styles.sessionLabel}>High</span>
-                      <span style={{ color: '#f44336', fontWeight: 700 }}>{activeSession.highAlerts || 0}</span>
-                    </div>
-                  </div>
-                </div>
-                <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>Drowsiness Score (SDS)</h3>
-                  <div style={styles.sdsBar}>
-                    <div
-                      style={{
-                        ...styles.sdsFill,
-                        width: `${activeSession.drowsinessScore || 0}%`,
-                        background:
-                          (activeSession.drowsinessScore || 0) > 80
-                            ? '#d32f2f'
-                            : (activeSession.drowsinessScore || 0) > 60
-                              ? '#f44336'
-                              : (activeSession.drowsinessScore || 0) > 35
-                                ? '#ff9800'
-                                : '#4caf50',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                    <span style={{ color: '#8899aa', fontSize: 12 }}>Peak: {activeSession.peakDrowsinessScore?.toFixed(1) || 0}%</span>
-                    <span style={{ fontWeight: 700 }}>{activeSession.drowsinessScore?.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {data?.sdsTrend?.length > 0 && (
-              <div style={styles.card}>
-                <h3 style={styles.cardTitle}>SDS Trend (Last 50 samples)</h3>
-                <div style={styles.trendChart}>
-                  {data.sdsTrend.map((point, i) => {
-                    const maxSDS = Math.max(...data.sdsTrend.map((p) => p.score), 1);
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          ...styles.trendBar,
-                          height: `${(point.score / maxSDS) * 100}%`,
-                          background:
-                            point.score > 80 ? '#d32f2f' :
-                            point.score > 60 ? '#f44336' :
-                            point.score > 35 ? '#ff9800' : '#4caf50',
-                          opacity: 0.7 + 0.3 * (i / data.sdsTrend.length),
-                        }}
-                        title={`SDS: ${point.score}%`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div style={styles.card}>
-              <h3 style={styles.cardTitle}>Recent Alerts</h3>
-              {data?.recentAlerts?.length === 0 ? (
-                <p style={styles.emptyText}>No alerts</p>
-              ) : (
-                <div style={styles.alertList}>
-                  {(data?.recentAlerts || []).slice(0, 10).map((alert) => (
-                    <div key={alert._id} style={styles.alertItem}>
-                      <span style={{ ...styles.alertSeverity, background: RISK_COLORS[alert.severity] || '#ffd700' }}>
-                        {alert.severity}
-                      </span>
-                      <span style={styles.alertType}>{alert.type}</span>
-                      <span style={styles.alertMsg}>{alert.message}</span>
-                      <span style={styles.alertTime}>{new Date(alert.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+          </div>
+          <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+            <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>Alerts</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#64748b'}}>Total</span><span style={{fontWeight:700}}>{sess.totalAlerts||0}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#64748b'}}>Critical</span><span style={{color:'#dc2626',fontWeight:700}}>{sess.criticalAlerts||0}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#64748b'}}>High</span><span style={{color:'#ef4444',fontWeight:700}}>{sess.highAlerts||0}</span></div>
             </div>
+          </div>
+          <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+            <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>SDS</h3>
+            <div style={{width:'100%',height:12,background:'rgba(255,255,255,0.06)',borderRadius:6,overflow:'hidden'}}>
+              <div style={{height:'100%',borderRadius:6,width:`${sess.drowsinessScore||0}%`,background:(sess.drowsinessScore||0)>70?'#dc2626':(sess.drowsinessScore||0)>40?'#f59e0b':'#22c55e',transition:'width 0.5s'}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:6,fontSize:11,color:'#64748b'}}>
+              <span>Peak: {sess.peakDrowsinessScore?.toFixed(0)}%</span>
+              <span style={{fontWeight:700,color:'#fff'}}>{sess.drowsinessScore?.toFixed(1)}%</span>
+            </div>
+          </div>
+        </div>}
 
-            {data?.sessionHistory?.length > 0 && (
-              <div style={styles.card}>
-                <h3 style={styles.cardTitle}>Session History (Last 10)</h3>
-                <div style={styles.table}>
-                  <div style={styles.tableHeader}>
-                    <span>Date</span>
-                    <span>Duration</span>
-                    <span>Avg SDS</span>
-                    <span>Risk</span>
-                    <span>Alerts</span>
-                  </div>
-                  {data.sessionHistory.slice(0, 10).map((s) => (
-                    <div key={s._id} style={styles.tableRow}>
-                      <span style={{ fontSize: 12 }}>{new Date(s.startTime).toLocaleDateString()}</span>
-                      <span>{s.duration ? `${Math.floor(s.duration / 60)}m` : '-'}</span>
-                      <span>{s.drowsinessScore?.toFixed(1)}%</span>
-                      <span>
-                        <span style={{ ...styles.riskBadgeSmall, background: RISK_COLORS[s.riskLevel] || '#4caf50' }}>
-                          {s.riskLevel || 'low'}
-                        </span>
-                      </span>
-                      <span>{s.totalAlerts || 0}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+        {data?.sdsTrend?.length>0&&<div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)',marginBottom:20}}>
+          <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>SDS Trend</h3>
+          <div style={{display:'flex',gap:2,height:90,alignItems:'flex-end'}}>
+            {data.sdsTrend.map((p,i)=>{const mx=Math.max(...data.sdsTrend.map(x=>x.score),1);return <div key={i} style={{flex:1,borderRadius:'2px 2px 0 0',transition:'height 0.3s',minHeight:2,height:`${(p.score/mx)*100}%`,background:p.score>70?'#dc2626':p.score>40?'#f59e0b':'#22c55e',opacity:0.6+0.4*(i/data.sdsTrend.length)}}/>})}
+          </div>
+        </div>}
+
+        <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)',marginBottom:20}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><Bell size={14} color="#64748b"/><h3 style={{fontSize:12,color:'#64748b',fontWeight:600,margin:0}}>Recent Alerts</h3></div>
+          {(!data?.recentAlerts||data.recentAlerts.length===0)?<p style={{color:'#475569',fontSize:13,textAlign:'center',padding:16}}>No alerts</p>:<div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {data.recentAlerts.slice(0,10).map(a=><div key={a._id} style={{display:'flex',alignItems:'center',gap:10,fontSize:12,padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+              <span style={{padding:'1px 8px',borderRadius:10,fontSize:9,fontWeight:600,color:'#fff',textTransform:'capitalize',background:RC[a.severity]||'#f59e0b'}}>{a.severity}</span>
+              <span style={{textTransform:'capitalize',fontWeight:600,minWidth:60,fontSize:11}}>{a.type.replace('_',' ')}</span>
+              <span style={{color:'#94a3b8',flex:1,fontSize:11}}>{a.message}</span>
+              <span style={{color:'#475569',fontSize:10}}>{new Date(a.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+            </div>)}
+          </div>}
+        </div>
+
+        {data?.sessionHistory?.length>0&&<div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><Clock size={14} color="#64748b"/><h3 style={{fontSize:12,color:'#64748b',fontWeight:600,margin:0}}>Session History</h3></div>
+          <div style={{fontSize:12}}>
+            <div style={{display:'flex',gap:16,padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.06)',color:'#475569',fontWeight:600,fontSize:10,textTransform:'uppercase'}}><span style={{flex:1}}>Date</span><span style={{flex:1}}>Duration</span><span style={{flex:1}}>SDS</span><span style={{flex:1}}>Risk</span><span style={{flex:0.6,textAlign:'right'}}>Alerts</span></div>
+            {data.sessionHistory.slice(0,10).map(s=><div key={s._id} style={{display:'flex',gap:16,padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.04)',alignItems:'center'}}>
+              <span style={{flex:1,fontSize:11}}>{new Date(s.startTime).toLocaleDateString()}</span>
+              <span style={{flex:1}}>{s.duration?`${Math.floor(s.duration/60)}m`:'—'}</span>
+              <span style={{flex:1}}>{s.drowsinessScore?.toFixed(0)}%</span>
+              <span style={{flex:1}}><span style={{padding:'1px 8px',borderRadius:10,fontSize:9,fontWeight:600,color:'#fff',textTransform:'capitalize',background:RC[s.riskLevel]||'#22c55e'}}>{s.riskLevel||'low'}</span></span>
+              <span style={{flex:0.6,textAlign:'right',fontWeight:600}}>{s.totalAlerts||0}</span>
+            </div>)}
+          </div>
+        </div>}
+      </div></div>
     </div>
   );
 }
-
-const styles = {
-  app: { minHeight: '100vh', background: '#0f0f23', color: '#fff', display: 'flex' },
-  main: { marginLeft: 240, flex: 1, padding: '24px 32px', overflowY: 'auto', maxHeight: '100vh' },
-  header: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 },
-  backBtn: { padding: '8px 16px', border: '1px solid #2a2a4a', borderRadius: 6, background: 'transparent', color: '#8899aa', cursor: 'pointer', fontSize: 13 },
-  pageTitle: { fontSize: 24, fontWeight: 700 },
-  loading: { textAlign: 'center', padding: 60, color: '#8899aa' },
-  profileCard: { background: '#1a1a2e', borderRadius: 12, padding: 24, display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 },
-  avatar: { width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #00d4ff, #0080ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700 },
-  driverName: { fontSize: 22, fontWeight: 700 },
-  driverEmail: { color: '#8899aa', fontSize: 14, marginBottom: 8 },
-  meta: { display: 'flex', gap: 20, fontSize: 13, color: '#8899aa' },
-  riskBadge: { padding: '3px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600, color: '#fff', textTransform: 'capitalize' },
-  riskBadgeSmall: { padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, color: '#fff', textTransform: 'capitalize' },
-  sdsGauge: { textAlign: 'center', padding: '12px 20px', background: '#16213e', borderRadius: 12 },
-  sdsValue: { fontSize: 36, fontWeight: 700 },
-  sdsLabel: { fontSize: 11, color: '#8899aa', textTransform: 'uppercase', letterSpacing: 1 },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 },
-  row: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 },
-  card: { background: '#1a1a2e', borderRadius: 12, padding: 20, marginBottom: 20 },
-  cardTitle: { fontSize: 16, fontWeight: 600, marginBottom: 12 },
-  sessionInfo: { display: 'flex', flexDirection: 'column', gap: 8 },
-  sessionItem: { display: 'flex', justifyContent: 'space-between', fontSize: 13 },
-  sessionLabel: { color: '#8899aa' },
-  sdsBar: { width: '100%', height: 16, background: '#2a2a4a', borderRadius: 8, overflow: 'hidden' },
-  sdsFill: { height: '100%', borderRadius: 8, transition: 'width 0.5s' },
-  trendChart: { display: 'flex', gap: 2, height: 120, alignItems: 'flex-end' },
-  trendBar: { flex: 1, borderRadius: '2px 2px 0 0', transition: 'height 0.3s', minHeight: 2 },
-  emptyText: { color: '#8899aa', textAlign: 'center', padding: 20 },
-  alertList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  alertItem: { display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, padding: '10px 0', borderBottom: '1px solid #2a2a4a' },
-  alertSeverity: { padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600, color: '#fff', textTransform: 'capitalize' },
-  alertType: { textTransform: 'capitalize', fontWeight: 600, minWidth: 80 },
-  alertMsg: { color: '#8899aa', flex: 1 },
-  alertTime: { color: '#8899aa', fontSize: 12 },
-  table: { fontSize: 13 },
-  tableHeader: { display: 'flex', gap: 16, padding: '8px 0', borderBottom: '1px solid #2a2a4a', color: '#8899aa', fontWeight: 600, fontSize: 12 },
-  tableRow: { display: 'flex', gap: 16, padding: '10px 0', borderBottom: '1px solid #2a2a4a', alignItems: 'center' },
-};

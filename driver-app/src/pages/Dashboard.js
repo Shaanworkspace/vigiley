@@ -3,118 +3,72 @@ import Navbar from '../components/Navbar';
 import VideoFeed from '../components/VideoFeed';
 import AlertPanel from '../components/AlertPanel';
 import { driverAPI } from '../services/api';
+import { Activity, AlertTriangle, ScanLine, Shield } from 'lucide-react';
+
+const RC = {low:'#22c55e',medium:'#f59e0b',high:'#ef4444',critical:'#dc2626'};
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    todayLogs: 0,
-    todayDrowsyEvents: 0,
-    recentAlerts: [],
-    activeSession: null,
-    hourlyBreakdown: [],
-  });
-  const [loading, setLoading] = useState(true);
+  const [st, setSt] = useState({todayLogs:0,todayDrowsyEvents:0,recentAlerts:[],activeSession:null,hourlyBreakdown:[]});
+  const [ld, setLd] = useState(true);
+  const [vis, setVis] = useState({});
 
-  useEffect(() => {
-    loadDashboard();
-    const interval = setInterval(loadDashboard, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(()=>{
+    load();
+    const i=setInterval(load,10000);
+    return ()=>clearInterval(i);
+  },[]);
 
-  const loadDashboard = async () => {
-    try {
-      const res = await driverAPI.getDashboard();
-      setStats(res.data);
-    } catch (err) {
-      console.error('Dashboard load failed');
-    } finally {
-      setLoading(false);
+  useEffect(()=>{
+    if(!ld){
+      const t=setTimeout(()=>setVis({a:true,b:true,c:true,d:true}),50);
+      return ()=>clearTimeout(t);
     }
+  },[ld]);
+
+  const load = async () => {
+    try{const r=await driverAPI.getDashboard();setSt(r.data)}catch(_){}finally{setLd(false)}
   };
 
+  const s = st.activeSession;
+  const rc = RC[s?.riskLevel]||'#22c55e';
+
+  const cards = [
+    {l:'Scans Today',v:st.todayLogs,Icon:ScanLine,c:'#3b82f6',k:'a'},
+    {l:'Drowsy Events',v:st.todayDrowsyEvents,Icon:AlertTriangle,c:'#f59e0b',k:'b'},
+    {l:'Session',v:s?'Active':'Inactive',Icon:Activity,c:s?'#22c55e':'#475569',k:'c'},
+    {l:'SDS Score',v:s?`${s.drowsinessScore?.toFixed(0)||'0'}`:'—',Icon:Shield,c:'#8b5cf6',k:'d'},
+  ];
+
   return (
-    <div style={styles.app}>
-      <Navbar />
-      <div style={styles.content}>
-        <div style={styles.main}>
-          <div style={styles.statsRow}>
-            <div style={styles.statCard}>
-              <span style={styles.statValue}>{stats.todayLogs}</span>
-              <span style={styles.statLabel}>Scans Today</span>
-            </div>
-            <div style={{ ...styles.statCard, borderLeft: '3px solid #ff9800' }}>
-              <span style={styles.statValue}>{stats.todayDrowsyEvents}</span>
-              <span style={styles.statLabel}>Drowsy Events</span>
-            </div>
-            <div style={{ ...styles.statCard, borderLeft: '3px solid #00d4ff' }}>
-              <span style={styles.statValue}>
-                {stats.activeSession ? 'Active' : 'Inactive'}
-              </span>
-              <span style={styles.statLabel}>Session</span>
-            </div>
-            {stats.activeSession && (
-              <div style={{ ...styles.statCard, borderLeft: '3px solid #9c27b0' }}>
-                <span style={styles.statValue}>
-                  {stats.activeSession.drowsinessScore?.toFixed(0) || '0'}
-                </span>
-                <span style={styles.statLabel}>SDS Score</span>
+    <div style={{minHeight:'100vh',background:'#020617'}}>
+      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(59,130,246,0.12),transparent),radial-gradient(ellipse 50% 40% at 80% 30%,rgba(99,102,241,0.06),transparent)',pointerEvents:'none',zIndex:0}}/>
+      <div style={{position:'relative',zIndex:1}}>
+        <Navbar />
+        <div style={{maxWidth:1200,margin:'0 auto',padding:'20px 24px 40px'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:20}}>
+            {cards.map((c,i)=>{
+              const I=c.Icon;
+              return <div key={c.l} style={{
+                background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:'18px 16px',backdropFilter:'blur(4px)',
+                borderTop:`3px solid ${c.c}`,
+                opacity:vis[c.k]?1:0,transform:vis[c.k]?'translateY(0)':'translateY(16px)',
+                transition:`all 0.6s cubic-bezier(0.16,1,0.3,1) ${i*0.08}s`,
+              }}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                  <div style={{width:34,height:34,borderRadius:10,background:`${c.c}15`,color:c.c,display:'flex',alignItems:'center',justifyContent:'center'}}><I size={16}/></div>
+                  {c.l==='SDS Score'&&s&&<span style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',padding:'2px 10px',borderRadius:20,background:rc+'20',color:rc}}>{s.riskLevel}</span>}
+                </div>
+                <span style={{fontSize:24,fontWeight:700}}>{c.v}</span>
+                <span style={{fontSize:12,color:'#64748b',fontWeight:500,display:'block',marginTop:2}}>{c.l}</span>
               </div>
-            )}
-            {stats.activeSession && (
-              <div style={{ ...styles.statCard, borderLeft: `3px solid ${
-                stats.activeSession.riskLevel === 'critical' ? '#d32f2f' :
-                stats.activeSession.riskLevel === 'high' ? '#f44336' :
-                stats.activeSession.riskLevel === 'medium' ? '#ff9800' : '#4caf50'
-              }` }}>
-                <span style={{ ...styles.statValue, fontSize: 20, textTransform: 'capitalize' }}>
-                  {stats.activeSession.riskLevel || 'low'}
-                </span>
-                <span style={styles.statLabel}>Risk Level</span>
-              </div>
-            )}
+            })}
           </div>
-
-          <VideoFeed />
-        </div>
-
-        <div style={styles.sidebar}>
-          <AlertPanel />
+          <div style={{display:'grid',gridTemplateColumns:'1fr 380px',gap:20,alignItems:'start'}}>
+            <VideoFeed />
+            <AlertPanel />
+          </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
-
-const styles = {
-  app: {
-    minHeight: '100vh',
-    background: '#0f0f23',
-    color: '#fff',
-  },
-  content: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 360px',
-    gap: 20,
-    padding: 20,
-    maxWidth: 1400,
-    margin: '0 auto',
-  },
-  main: { display: 'flex', flexDirection: 'column', gap: 20 },
-  sidebar: {},
-  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 },
-  statCard: {
-    background: '#1a1a2e',
-    borderRadius: 12,
-    padding: '20px 16px',
-    display: 'flex',
-    flexDirection: 'column',
-    borderLeft: '3px solid #4caf50',
-  },
-  statValue: { fontSize: 28, fontWeight: 700 },
-  statLabel: { fontSize: 13, color: '#8899aa', marginTop: 4 },
-};

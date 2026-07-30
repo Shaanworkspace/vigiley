@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "description": "VigilEye - Multi-Modal Driver Drowsiness Detection & Intelligent Alert System",
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix driver-app && npm install --prefix admin-app",
+    "install:all": "npm install --prefix backend && npm install --prefix driver-app && npm install --prefix admin-app && npm install --prefix landing",
     "dev:backend": "npm run dev --prefix backend",
     "dev:driver": "npm start --prefix driver-app",
     "dev:admin": "npm start --prefix admin-app",
     "start:backend": "npm start --prefix backend",
     "build:driver": "npm run build --prefix driver-app",
-    "build:admin": "npm run build --prefix admin-app"
+    "build:admin": "npm run build --prefix admin-app",
+    "dev:landing": "npm start --prefix landing",
+    "build:landing": "npm run build --prefix landing"
   }
 }

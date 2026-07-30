@@ -1,209 +1,78 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { driverAPI } from '../services/api';
+import { Play, Square, Activity, Camera } from 'lucide-react';
 
-const DETECTION_INTERVAL = 3000;
+const DI = 3000;
 
 export default function VideoFeed() {
-  const webcamRef = useRef(null);
-  const intervalRef = useRef(null);
-  const [isActive, setIsActive] = useState(false);
-  const [lastStatus, setLastStatus] = useState('normal');
-  const [confidence, setConfidence] = useState(0);
-  const [sessionActive, setSessionActive] = useState(false);
+  const wc = useRef(null);
+  const iv = useRef(null);
+  const [on, setOn] = useState(false);
+  const [se, setSe] = useState(false);
+  const [st, setSt] = useState('normal');
+  const [cf, setCf] = useState(0);
 
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+  useEffect(() => () => iv.current && clearInterval(iv.current), []);
+
+  const sim = useCallback(() => {
+    const ss = ['normal','normal','normal','yawning','eyes_closed','drowsy'];
+    const s = ss[Math.floor(Math.random()*ss.length)];
+    const c = s==='normal'?Math.floor(Math.random()*25)+5:Math.floor(Math.random()*35)+60;
+    setSt(s); setCf(c);
+    driverAPI.sendDetection({status:s,confidence:c,eyeAspectRatio:Math.random()*0.5,mouthAspectRatio:Math.random()*0.8,headPitch:(Math.random()-0.5)*30,headYaw:(Math.random()-0.5)*40}).catch(()=>{});
   }, []);
 
-  const simulateDetection = useCallback(() => {
-    if (!webcamRef.current) return;
-
-    const statuses = ['normal', 'normal', 'normal', 'yawning', 'eyes_closed', 'drowsy'];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    const randomConfidence = randomStatus === 'normal'
-      ? Math.floor(Math.random() * 30) + 10
-      : Math.floor(Math.random() * 40) + 55;
-
-    setLastStatus(randomStatus);
-    setConfidence(randomConfidence);
-
-    driverAPI
-      .sendDetection({
-        status: randomStatus,
-        confidence: randomConfidence,
-        eyeAspectRatio: Math.random() * 0.5,
-        mouthAspectRatio: Math.random() * 0.8,
-        headPitch: (Math.random() - 0.5) * 30,
-        headYaw: (Math.random() - 0.5) * 40,
-      })
-      .catch((err) => console.error('Detection send failed'));
-  }, []);
-
-  const startDetection = async () => {
-    try {
-      await driverAPI.startSession();
-      setSessionActive(true);
-      setIsActive(true);
-      intervalRef.current = setInterval(simulateDetection, DETECTION_INTERVAL);
-    } catch (err) {
-      console.error('Failed to start session');
-    }
+  const start = async () => {
+    try { await driverAPI.startSession(); setSe(true); setOn(true); iv.current = setInterval(sim, DI); }
+    catch(_){}
+  };
+  const stop = async () => {
+    if(iv.current){clearInterval(iv.current);iv.current=null}
+    setOn(false); try{await driverAPI.endSession()}catch(_){}
   };
 
-  const stopDetection = async () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setIsActive(false);
-    setSessionActive(false);
-    try {
-      await driverAPI.endSession();
-    } catch (err) {
-      console.error('Failed to end session');
-    }
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      normal: '#4caf50',
-      yawning: '#ff9800',
-      eyes_closed: '#f44336',
-      drowsy: '#d32f2f',
-      distracted: '#ff5722',
-    };
-    return colors[status] || '#4caf50';
-  };
-
-  const getStatusEmoji = (status) => {
-    const emojis = {
-      normal: '😊',
-      yawning: '🥱',
-      eyes_closed: '😴',
-      drowsy: '⚠️',
-      distracted: '📱',
-    };
-    return emojis[status] || '😊';
-  };
+  const c = (s) => ({normal:'#22c55e',yawning:'#f59e0b',eyes_closed:'#ef4444',drowsy:'#dc2626',distracted:'#ea580c'}[s]||'#22c55e');
+  const cc = cf>70?'#ef4444':cf>40?'#f59e0b':'#22c55e';
 
   return (
-    <div style={styles.container}>
-      <div style={styles.cameraWrapper}>
-        <Webcam
-          ref={webcamRef}
-          style={styles.webcam}
-          screenshotFormat="image/jpeg"
-          mirrored
-          videoConstraints={{ facingMode: 'user', width: 640, height: 480 }}
-        />
-        {!isActive && (
-          <div style={styles.overlay}>
-            <p style={styles.overlayText}>
-              {sessionActive ? 'Detection Paused' : 'Click Start to begin monitoring'}
-            </p>
+    <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:16,overflow:'hidden',backdropFilter:'blur(4px)'}}>
+      <div style={{position:'relative',background:'#0f172a',aspectRatio:'4/3',overflow:'hidden'}}>
+        <Webcam ref={wc} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} screenshotFormat="image/jpeg" mirrored videoConstraints={{facingMode:'user',width:640,height:480}} />
+        {!on && (
+          <div style={{position:'absolute',inset:0,background:'rgba(2,6,23,0.7)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+            <Camera size={36} color="#475569"/>
+            <p style={{fontSize:14,color:'#64748b',fontWeight:500}}>{se?'Detection paused':'Press start to begin'}</p>
           </div>
         )}
+        {on && <div style={{position:'absolute',top:12,left:12,background:'rgba(239,68,68,0.85)',color:'#fff',fontSize:10,fontWeight:700,letterSpacing:'1px',padding:'4px 10px',borderRadius:6,display:'flex',alignItems:'center',gap:6}}><span style={{width:6,height:6,borderRadius:'50%',background:'#fff',animation:'pulse 1.5s ease-in-out infinite'}}/>LIVE</div>}
       </div>
-
-      <div style={styles.statusBar}>
-        <div style={styles.statusRow}>
-          <span style={styles.statusLabel}>Status</span>
-          <span
-            style={{
-              ...styles.statusValue,
-              color: getStatusColor(lastStatus),
-            }}
-          >
-            {getStatusEmoji(lastStatus)} {lastStatus.replace('_', ' ')}
-          </span>
-        </div>
-        <div style={styles.statusRow}>
-          <span style={styles.statusLabel}>Confidence</span>
-          <div style={styles.confidenceBar}>
-            <div
-              style={{
-                ...styles.confidenceFill,
-                width: `${confidence}%`,
-                background: confidence > 70 ? '#f44336' : confidence > 40 ? '#ff9800' : '#4caf50',
-              }}
-            />
+      <div style={{padding:'14px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',gap:10}}>
+        <div>
+          <span style={{fontSize:10,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,display:'block'}}>Status</span>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <Activity size={14} color={c(st)}/>
+            <span style={{fontWeight:700,fontSize:14,textTransform:'capitalize',color:st==='normal'?'#22c55e':st==='yawning'?'#f59e0b':'#ef4444'}}>{st.replace('_',' ')}</span>
           </div>
-          <span style={styles.confidenceText}>{confidence}%</span>
+        </div>
+        <div>
+          <span style={{fontSize:10,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,display:'block'}}>Confidence</span>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{flex:1,height:6,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',borderRadius:3,background:cc,width:`${cf}%`,transition:'all 0.3s'}}/></div>
+            <span style={{fontSize:13,fontWeight:600,color:cc,minWidth:36,textAlign:'right'}}>{cf}%</span>
+          </div>
         </div>
       </div>
-
-      <button
-        style={{
-          ...styles.controlBtn,
-          background: isActive
-            ? 'linear-gradient(135deg, #d32f2f, #b71c1c)'
-            : 'linear-gradient(135deg, #4caf50, #388e3c)',
-        }}
-        onClick={isActive ? stopDetection : startDetection}
-      >
-        {isActive ? 'Stop Monitoring' : 'Start Monitoring'}
+      <button onClick={on?stop:start} style={{
+        display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:12,margin:16,borderRadius:10,
+        border:'1.5px solid',fontWeight:600,fontSize:14,cursor:'pointer',transition:'all 0.2s',
+        background:on?'rgba(239,68,68,0.1)':'rgba(34,197,94,0.1)',
+        color:on?'#fca5a5':'#86efac',
+        borderColor:on?'rgba(239,68,68,0.2)':'rgba(34,197,94,0.2)',
+      }}>
+        {on?<Square size={15}/>:<Play size={15}/>}
+        {on?'Stop Monitoring':'Start Monitoring'}
       </button>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    background: '#1a1a2e',
-    borderRadius: 12,
-    padding: 16,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-  cameraWrapper: {
-    position: 'relative',
-    borderRadius: 8,
-    overflow: 'hidden',
-    background: '#000',
-    aspectRatio: '4/3',
-  },
-  webcam: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-  overlay: {
-    position: 'absolute',
-    inset: 0,
-    background: 'rgba(0,0,0,0.6)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overlayText: { color: '#fff', fontSize: 18, fontWeight: 600, opacity: 0.8 },
-  statusBar: {
-    background: '#16213e',
-    borderRadius: 8,
-    padding: 12,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-  statusRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  statusLabel: { color: '#8899aa', fontSize: 13, fontWeight: 500, minWidth: 80 },
-  statusValue: { fontWeight: 700, fontSize: 16, textTransform: 'capitalize' },
-  confidenceBar: {
-    flex: 1,
-    height: 8,
-    background: '#2a2a4a',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  confidenceFill: { height: '100%', borderRadius: 4, transition: 'width 0.3s, background 0.3s' },
-  confidenceText: { color: '#8899aa', fontSize: 13, minWidth: 40, textAlign: 'right' },
-  controlBtn: {
-    padding: '14px 24px',
-    border: 'none',
-    borderRadius: 8,
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 700,
-    cursor: 'pointer',
-    letterSpacing: 1,
-  },
-};

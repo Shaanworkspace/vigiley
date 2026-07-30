@@ -10,58 +10,28 @@ import Alerts from './pages/Alerts';
 import Reports from './pages/Reports';
 import ProtectedRoute from './components/ProtectedRoute';
 
+const g = `@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}`;
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <SocketProvider>
-          <Routes>
-            <Route path="/admin/login" element={<Login />} />
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/drivers"
-              element={
-                <ProtectedRoute>
-                  <Drivers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/drivers/:id"
-              element={
-                <ProtectedRoute>
-                  <DriverDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/alerts"
-              element={
-                <ProtectedRoute>
-                  <Alerts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/reports"
-              element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
-          </Routes>
-        </SocketProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <>
+      <style>{g}</style>
+      <BrowserRouter>
+        <AuthProvider>
+          <SocketProvider>
+            <Routes>
+              <Route path="/admin/login" element={<Login />} />
+              <Route path="/admin/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/admin/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
+              <Route path="/admin/drivers/:id" element={<ProtectedRoute><DriverDetail /></ProtectedRoute>} />
+              <Route path="/admin/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+              <Route path="/admin/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+            </Routes>
+          </SocketProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </>
   );
 }

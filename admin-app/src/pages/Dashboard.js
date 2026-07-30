@@ -1,216 +1,104 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
+import Navbar from '../components/Navbar';
 import StatCard from '../components/StatCard';
 import AlertBadge from '../components/AlertBadge';
 import { adminAPI } from '../services/api';
 import { useSocket } from '../context/SocketContext';
+import { Users, Activity, Bell, Shield, AlertTriangle } from 'lucide-react';
 
-const RISK_COLORS = { low: '#4caf50', medium: '#ff9800', high: '#f44336', critical: '#d32f2f' };
+const RC = {low:'#22c55e',medium:'#f59e0b',high:'#ef4444',critical:'#dc2626'};
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [vis, setVis] = useState(false);
   const { liveAlerts } = useSocket();
 
-  useEffect(() => { loadStats(); }, []);
+  useEffect(()=>{load()},[]);
+  useEffect(()=>{if(liveAlerts.length>0&&stats)setStats(p=>({...p,totalAlerts:p.totalAlerts+liveAlerts.length,unacknowledgedAlerts:p.unacknowledgedAlerts+liveAlerts.length}))},[liveAlerts]);
 
-  useEffect(() => {
-    if (liveAlerts.length > 0 && stats) {
-      setStats((prev) => ({
-        ...prev,
-        totalAlerts: prev.totalAlerts + liveAlerts.length,
-        unacknowledgedAlerts: prev.unacknowledgedAlerts + liveAlerts.length,
-      }));
-    }
-  }, [liveAlerts]);
-
-  const loadStats = async () => {
-    try {
-      const res = await adminAPI.getDashboard();
-      setStats(res.data);
-    } catch (err) {
-      console.error('Failed to load stats');
-    } finally {
-      setLoading(false);
-    }
+  const load = async () => {
+    try{const r=await adminAPI.getDashboard();setStats(r.data);setTimeout(()=>setVis(true),100)}catch(_){}finally{setLoading(false)}
   };
 
   return (
-    <div style={appStyles.app}>
-      <Sidebar />
-      <div style={appStyles.main}>
-        <header style={appStyles.header}>
-          <h1 style={appStyles.pageTitle}>Dashboard</h1>
-          <AlertBadge />
-        </header>
-
-        {loading ? (
-          <div style={appStyles.loading}>Loading...</div>
-        ) : (
-          <>
-            <div style={appStyles.statsGrid}>
-              <StatCard label="Total Drivers" value={stats?.totalDrivers || 0} color="#4caf50" icon="👥" />
-              <StatCard label="Active Drivers" value={stats?.activeDrivers || 0} color="#00d4ff" icon="🟢" />
-              <StatCard label="Active Sessions" value={stats?.activeSessions || 0} color="#ff9800" icon="⚡" />
-              <StatCard label="Total Alerts" value={stats?.totalAlerts || 0} color="#f44336" icon="🔔" />
-            </div>
-
-            <div style={appStyles.row}>
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Unacknowledged Alerts</h3>
-                <div style={appStyles.bigNumber}>{stats?.unacknowledgedAlerts || 0}</div>
+    <div style={{minHeight:'100vh',background:'#020617'}}>
+      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(139,92,246,0.12),transparent),radial-gradient(ellipse 50% 40% at 80% 30%,rgba(59,130,246,0.06),transparent)',pointerEvents:'none',zIndex:0}}/>
+      <div style={{position:'relative',zIndex:1}}>
+        <Navbar />
+        <div style={{maxWidth:1200,margin:'0 auto',padding:'20px 24px 40px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
+            <div><h1 style={{fontSize:22,fontWeight:700}}>Dashboard</h1><p style={{fontSize:13,color:'#64748b',marginTop:2}}>Real-time fleet safety overview</p></div>
+            <AlertBadge />
+          </div>
+          {loading ? <div style={{textAlign:'center',padding:60,color:'#64748b'}}>Loading…</div> : (
+            <>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:20}}>
+                <StatCard label="Total Drivers" value={stats?.totalDrivers||0} color="#3b82f6" icon={Users} />
+                <StatCard label="Active Now" value={stats?.activeSessions||0} color="#22c55e" icon={Activity} />
+                <StatCard label="Total Alerts" value={stats?.totalAlerts||0} color="#ef4444" icon={Bell} />
+                <StatCard label="Avg SDS" value={stats?.avgSessionSDS?.avgSDS?.toFixed(1)||'0'} color="#8b5cf6" icon={Shield} />
               </div>
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Today's Alerts</h3>
-                <div style={appStyles.bigNumber}>{stats?.todayAlerts || 0}</div>
+
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:20}}>
+                {[
+                  {t:'Unacknowledged',v:stats?.unacknowledgedAlerts||0},
+                  {t:"Today's Alerts",v:stats?.todayAlerts||0},
+                  {t:'Completed Sessions',v:stats?.avgSessionSDS?.total||0},
+                ].map((c,i)=><div key={c.t} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)',opacity:vis?1:0,transform:vis?'translateY(0)':'translateY(16px)',transition:`all 0.5s cubic-bezier(0.16,1,0.3,1) ${i*0.08}s`}}>
+                  <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:8}}>{c.t}</h3>
+                  <div style={{fontSize:34,fontWeight:700}}>{c.v}</div>
+                </div>)}
               </div>
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Avg Session SDS</h3>
-                <div style={appStyles.bigNumber}>
-                  {stats?.avgSessionSDS?.avgSDS?.toFixed(1) || 0}
-                  <span style={{ fontSize: 14, color: '#8899aa', fontWeight: 400, marginLeft: 8 }}>/100</span>
+
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:20}}>
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+                  <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>Alert Severity</h3>
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>{(stats?.alertsBySeverity||[]).map(s=><div key={s._id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{textTransform:'capitalize',fontSize:13}}>{s._id}</span><span style={{fontWeight:700,fontSize:16}}>{s.count}</span></div>)}</div>
                 </div>
-              </div>
-            </div>
-
-            <div style={appStyles.row}>
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Alert Severity Breakdown</h3>
-                <div style={appStyles.severityList}>
-                  {(stats?.alertsBySeverity || []).map((s) => (
-                    <div key={s._id} style={appStyles.severityItem}>
-                      <span style={appStyles.severityLabel}>{s._id}</span>
-                      <span style={appStyles.severityCount}>{s.count}</span>
-                    </div>
-                  ))}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+                  <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>Active Risk Levels</h3>
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>{(stats?.riskDistribution||[]).map(r=><div key={r._id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{color:RC[r._id]||'#fff',textTransform:'capitalize',fontSize:13,fontWeight:600}}>{r._id}</span><span style={{fontWeight:700,fontSize:16}}>{r.count}</span></div>)}
+                  {(!stats?.riskDistribution||stats.riskDistribution.length===0)&&<span style={{color:'#475569',fontSize:13}}>No active sessions</span>}</div>
                 </div>
-              </div>
-
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Active Session Risk Levels</h3>
-                <div style={appStyles.severityList}>
-                  {(stats?.riskDistribution || []).map((r) => (
-                    <div key={r._id} style={appStyles.severityItem}>
-                      <span style={{ ...appStyles.severityLabel, color: RISK_COLORS[r._id] || '#fff' }}>
-                        {r._id}
-                      </span>
-                      <span style={appStyles.severityCount}>{r.count}</span>
-                    </div>
-                  ))}
-                  {(!stats?.riskDistribution || stats.riskDistribution.length === 0) && (
-                    <span style={{ color: '#8899aa', fontSize: 13 }}>No active sessions</span>
-                  )}
+                <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+                  <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:12}}>Hourly Trend</h3>
+                  <div style={{display:'flex',gap:3,height:100,alignItems:'flex-end',paddingBottom:18}}>
+                    {(stats?.hourlyAlertTrend||[]).map(h=>{const mx=Math.max(...(stats?.hourlyAlertTrend||[]).map(x=>x.count),1);return <div key={h._id} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',height:'100%',justifyContent:'flex-end'}}>
+                      <div style={{width:'70%',borderRadius:'4px 4px 0 0',transition:'height 0.4s',minHeight:3,height:`${(h.count/mx)*100}%`,background:h.count>3?'#ef4444':h.count>1?'#f59e0b':'#22c55e'}}/>
+                      <span style={{fontSize:8,color:'#475569',marginTop:3}}>{h._id}</span>
+                    </div>})}
+                  </div>
                 </div>
               </div>
 
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Hourly Alert Trend (Today)</h3>
-                <div style={appStyles.hourlyChart}>
-                  {(stats?.hourlyAlertTrend || []).map((h) => (
-                    <div key={h._id} style={appStyles.hourBar}>
-                      <div
-                        style={{
-                          ...appStyles.hourFill,
-                          height: `${Math.min((h.count / Math.max(...(stats.hourlyAlertTrend || []).map((x) => x.count), 1)) * 100, 100)}%`,
-                          background: h.count > 5 ? '#f44336' : h.count > 2 ? '#ff9800' : '#4caf50',
-                        }}
-                      />
-                      <span style={appStyles.hourLabel}>{h._id}:00</span>
-                    </div>
-                  ))}
+              {stats?.highRiskDrivers?.length>0&&<div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)',marginBottom:20}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><AlertTriangle size={15} color="#ef4444"/><h3 style={{fontSize:12,color:'#64748b',fontWeight:600,margin:0}}>High-Risk Drivers</h3></div>
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {stats.highRiskDrivers.map((s,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:12,fontSize:13,padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                    <span style={{color:'#475569',fontWeight:700,width:22,fontSize:12}}>#{i+1}</span>
+                    <div style={{minWidth:130}}><span style={{fontWeight:600,display:'block',fontSize:12}}>{s.driver?.name||'Unknown'}</span><span style={{color:'#64748b',fontSize:10}}>{s.driver?.vehicleNumber||'—'}</span></div>
+                    <div style={{flex:1,height:5,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',borderRadius:3,width:`${s.drowsinessScore||0}%`,background:s.riskLevel==='critical'?'#dc2626':'#ef4444'}}/></div>
+                    <span style={{minWidth:35,fontWeight:600,fontSize:12,textAlign:'right'}}>{s.drowsinessScore?.toFixed(0)}%</span>
+                    <span style={{padding:'2px 8px',borderRadius:12,fontSize:9,fontWeight:600,color:'#fff',textTransform:'capitalize',background:RC[s.riskLevel]}}>{s.riskLevel}</span>
+                  </div>)}
                 </div>
-              </div>
-            </div>
+              </div>}
 
-            {stats?.highRiskDrivers?.length > 0 && (
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>High Risk Drivers — Active Sessions</h3>
-                <div style={appStyles.riskList}>
-                  {(stats.highRiskDrivers || []).map((session, i) => (
-                    <div key={i} style={appStyles.riskItem}>
-                      <span style={appStyles.riskRank}>#{i + 1}</span>
-                      <span style={appStyles.riskName}>{session.driver?.name || 'Unknown'}</span>
-                      <span style={appStyles.riskVehicle}>{session.driver?.vehicleNumber || 'N/A'}</span>
-                      <div style={appStyles.riskScoreBar}>
-                        <div
-                          style={{
-                            ...appStyles.riskScoreFill,
-                            width: `${session.drowsinessScore || 0}%`,
-                            background: session.riskLevel === 'critical' ? '#d32f2f' : '#f44336',
-                          }}
-                        />
-                      </div>
-                      <span style={appStyles.riskScore}>{session.drowsinessScore?.toFixed(1)}%</span>
-                      <span
-                        style={{
-                          ...appStyles.riskBadge,
-                          background: RISK_COLORS[session.riskLevel] || '#ff9800',
-                        }}
-                      >
-                        {session.riskLevel}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {liveAlerts.length > 0 && (
-              <div style={appStyles.card}>
-                <h3 style={appStyles.cardTitle}>Live Alerts</h3>
-                <div style={appStyles.liveList}>
-                  {liveAlerts.slice(0, 6).map((alert, i) => (
-                    <div key={i} style={appStyles.liveItem}>
-                      <span style={{ ...appStyles.liveDot, background: RISK_COLORS[alert.severity] || '#ffd700' }} />
-                      <span style={{ fontWeight: 600 }}>{alert.driver?.name || 'Driver'}</span>
-                      <span style={appStyles.liveType}>{alert.type}</span>
-                      {alert.sds && <span style={{ color: '#8899aa', fontSize: 11 }}>SDS: {alert.sds}%</span>}
-                      <span style={appStyles.liveTime}>{new Date(alert.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
+              {liveAlerts.length>0&&<div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><Bell size={15} color="#ef4444"/><h3 style={{fontSize:12,color:'#64748b',fontWeight:600,margin:0}}>Live Alerts</h3><AlertBadge/></div>
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>{liveAlerts.slice(0,6).map((a,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:10,fontSize:12,padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                  <span style={{width:6,height:6,borderRadius:'50%',flexShrink:0,background:RC[a.severity]||'#f59e0b'}}/>
+                  <span style={{fontWeight:600,minWidth:90,fontSize:12}}>{a.driver?.name||'Driver'}</span>
+                  <span style={{color:'#64748b',textTransform:'capitalize',minWidth:60,fontSize:11}}>{a.type}</span>
+                  {a.sds&&<span style={{color:'#475569',fontSize:10}}>SDS {a.sds}%</span>}
+                  <span style={{marginLeft:'auto',color:'#475569',fontSize:10}}>{new Date(a.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                </div>)}</div>
+              </div>}
+            </>
+          )}
+        </div>
       </div>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
-
-const appStyles = {
-  app: { minHeight: '100vh', background: '#0f0f23', color: '#fff', display: 'flex' },
-  main: { marginLeft: 240, flex: 1, padding: '24px 32px', overflowY: 'auto', maxHeight: '100vh' },
-  header: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
-  pageTitle: { fontSize: 24, fontWeight: 700 },
-  loading: { textAlign: 'center', padding: 60, color: '#8899aa', fontSize: 16 },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 },
-  row: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
-  card: { background: '#1a1a2e', borderRadius: 12, padding: 20 },
-  cardTitle: { fontSize: 14, color: '#8899aa', fontWeight: 600, marginBottom: 12 },
-  bigNumber: { fontSize: 42, fontWeight: 700, display: 'flex', alignItems: 'baseline' },
-  severityList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  severityItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  severityLabel: { textTransform: 'capitalize', fontSize: 14 },
-  severityCount: { fontSize: 18, fontWeight: 700 },
-  hourlyChart: { display: 'flex', gap: 4, height: 120, alignItems: 'flex-end', paddingBottom: 20 },
-  hourBar: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  hourFill: { width: '70%', borderRadius: '4px 4px 0 0', transition: 'height 0.5s', minHeight: 4 },
-  hourLabel: { fontSize: 9, color: '#8899aa', marginTop: 4 },
-  riskList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  riskItem: { display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, padding: '8px 0', borderBottom: '1px solid #2a2a4a' },
-  riskRank: { color: '#8899aa', fontWeight: 700, width: 24 },
-  riskName: { fontWeight: 600, minWidth: 120 },
-  riskVehicle: { color: '#8899aa', minWidth: 100, fontSize: 12 },
-  riskScoreBar: { flex: 1, height: 8, background: '#2a2a4a', borderRadius: 4, overflow: 'hidden' },
-  riskScoreFill: { height: '100%', borderRadius: 4, transition: 'width 0.5s' },
-  riskScore: { minWidth: 50, fontWeight: 600, textAlign: 'right' },
-  riskBadge: { padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600, color: '#fff', textTransform: 'capitalize' },
-  liveList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  liveItem: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, padding: '8px 0', borderBottom: '1px solid #2a2a4a' },
-  liveDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
-  liveType: { textTransform: 'capitalize', color: '#8899aa' },
-  liveTime: { marginLeft: 'auto', color: '#8899aa', fontSize: 12 },
-};

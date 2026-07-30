@@ -1,5 +1,13 @@
 # VigilEye: Multi-Modal Driver Drowsiness Detection & Intelligent Alert System
 
+**Authors:** Shaan Yadav, Shrishti Mangla, Utkarsh Kumar Singh, Shreya Jain  
+**Institution:** KIET Deemed to be University, Ghaziabad  
+**Mentor:** Mr. Mritunjay  
+**Address:** Delhi-NCR, Ghaziabad-Meerut Road, Muradnagar, Ghaziabad-201206
+
+> **Publish-Ready IEEE Research Paper:** See [`vigiley-ml/paper.md`](vigiley-ml/paper.md)  
+> **Publication Checklist:** See [`CHECKLIST.md`](CHECKLIST.md) — 60/60 items verified
+
 ## Research Documentation
 
 ---

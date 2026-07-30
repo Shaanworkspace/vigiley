@@ -1,226 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
+import Navbar from '../components/Navbar';
 import { adminAPI } from '../services/api';
+import { BarChart3 } from 'lucide-react';
+
+const SC = {normal:'#22c55e',yawning:'#f59e0b',eyes_closed:'#ef4444',drowsy:'#dc2625',distracted:'#ea580c'};
 
 export default function Reports() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-  });
+  const [dates, setDates] = useState({startDate:new Date(Date.now()-7*86400000).toISOString().split('T')[0],endDate:new Date().toISOString().split('T')[0]});
 
-  useEffect(() => {
-    loadReport();
-  }, []);
-
-  const loadReport = async () => {
-    setLoading(true);
-    try {
-      const res = await adminAPI.getReportSummary(dateRange);
-      setReport(res.data);
-    } catch (err) {
-      console.error('Failed to load report');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const statusColors = {
-    normal: '#4caf50',
-    yawning: '#ff9800',
-    eyes_closed: '#f44336',
-    drowsy: '#d32f2f',
-    distracted: '#ff5722',
-  };
+  useEffect(()=>{load()},[]);
+  const load = async () => {setLoading(true);try{const r=await adminAPI.getReportSummary(dates);setReport(r.data)}catch(_){}finally{setLoading(false)}};
 
   return (
-    <div style={styles.app}>
-      <Sidebar />
-      <div style={styles.main}>
-        <header style={styles.header}>
-          <h1 style={styles.pageTitle}>Reports</h1>
-        </header>
-
-        <div style={styles.filterBar}>
-          <div style={styles.field}>
-            <label style={styles.label}>Start Date</label>
-            <input
-              type="date"
-              value={dateRange.startDate}
-              onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-              style={styles.dateInput}
-            />
-          </div>
-          <div style={styles.field}>
-            <label style={styles.label}>End Date</label>
-            <input
-              type="date"
-              value={dateRange.endDate}
-              onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-              style={styles.dateInput}
-            />
-          </div>
-          <button style={styles.applyBtn} onClick={loadReport}>
-            Apply
-          </button>
+    <div style={{minHeight:'100vh',background:'#020617'}}>
+      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(245,158,11,0.08),transparent)',pointerEvents:'none',zIndex:0}}/>
+      <div style={{position:'relative',zIndex:1}}><Navbar />
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'20px 24px 40px'}}>
+        <div style={{marginBottom:24}}><h1 style={{fontSize:22,fontWeight:700}}>Reports</h1><p style={{fontSize:13,color:'#64748b',marginTop:2}}>Driver drowsiness analytics</p></div>
+        <div style={{display:'flex',gap:12,alignItems:'flex-end',marginBottom:24,flexWrap:'wrap'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}><label style={{fontSize:11,fontWeight:600,color:'#64748b'}}>Start</label><input type="date" value={dates.startDate} onChange={e=>setDates({...dates,startDate:e.target.value})} style={{padding:'7px 12px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'#fff',fontSize:13}}/></div>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}><label style={{fontSize:11,fontWeight:600,color:'#64748b'}}>End</label><input type="date" value={dates.endDate} onChange={e=>setDates({...dates,endDate:e.target.value})} style={{padding:'7px 12px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'#fff',fontSize:13}}/></div>
+          <button style={{padding:'7px 18px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}} onClick={load}>Apply</button>
         </div>
-
-        {loading ? (
-          <div style={styles.loading}>Loading...</div>
-        ) : !report ? (
-          <div style={styles.empty}>No data available</div>
-        ) : (
-          <>
-            <div style={styles.row}>
-              <div style={styles.card}>
-                <h3 style={styles.cardTitle}>Status Distribution</h3>
-                <div style={styles.barChart}>
-                  {(report.statusDistribution || []).map((item) => {
-                    const total = report.statusDistribution.reduce((acc, s) => acc + s.count, 0);
-                    const pct = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-                    return (
-                      <div key={item._id} style={styles.barRow}>
-                        <span style={styles.barLabel}>{item._id.replace('_', ' ')}</span>
-                        <div style={styles.barTrack}>
-                          <div
-                            style={{
-                              ...styles.barFill,
-                              width: `${pct}%`,
-                              background: statusColors[item._id] || '#4caf50',
-                            }}
-                          />
-                        </div>
-                        <span style={styles.barCount}>{item.count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={styles.card}>
-                <h3 style={styles.cardTitle}>Hourly Drowsiness Trend</h3>
-                <div style={styles.hourlyChart}>
-                  {(report.hourlyTrend || []).map((h) => (
-                    <div key={h._id} style={styles.hourBar}>
-                      <div
-                        style={{
-                          ...styles.hourFill,
-                          height: `${Math.min((h.drowsy / (h.total || 1)) * 100, 100)}%`,
-                          background: h.drowsy > 0 ? '#f44336' : '#2a2a4a',
-                        }}
-                      />
-                      <span style={styles.hourLabel}>{h._id}:00</span>
-                    </div>
-                  ))}
-                </div>
+        {loading?<div style={{textAlign:'center',padding:60,color:'#64748b'}}>Loading…</div>:!report?<div style={{textAlign:'center',padding:60,color:'#64748b'}}>No data available</div>:<>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+              <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:14}}>Status Distribution</h3>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>{(report.statusDistribution||[]).map(item=>{const total=report.statusDistribution.reduce((a,s)=>a+s.count,0);const pct=total>0?((item.count/total)*100).toFixed(1):0;
+                return <div key={item._id} style={{display:'flex',alignItems:'center',gap:12}}>
+                  <span style={{minWidth:90,fontSize:13,fontWeight:500,textTransform:'capitalize'}}>{item._id.replace('_',' ')}</span>
+                  <div style={{flex:1,height:16,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',borderRadius:4,width:`${pct}%`,background:SC[item._id]||'#3b82f6',transition:'width 0.5s',minWidth:4}}/></div>
+                  <span style={{minWidth:28,fontSize:13,fontWeight:600,textAlign:'right'}}>{item.count}</span>
+                </div>})}
               </div>
             </div>
-
-            <div style={styles.card}>
-              <h3 style={styles.cardTitle}>Alert Severity Breakdown</h3>
-              <div style={styles.severityGrid}>
-                {(report.alertsBySeverity || []).map((s) => (
-                  <div key={s._id} style={styles.severityItem}>
-                    <span style={{ ...styles.severityLabel, color: statusColors[s._id] || '#fff' }}>
-                      {s._id}
-                    </span>
-                    <span style={styles.severityCount}>{s.count}</span>
-                  </div>
-                ))}
-              </div>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+              <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:14}}>Hourly Drowsiness</h3>
+              <div style={{display:'flex',gap:4,height:130,alignItems:'flex-end',paddingBottom:18}}>{(report.hourlyTrend||[]).map(h=><div key={h._id} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',height:'100%',justifyContent:'flex-end'}}>
+                <div style={{width:'70%',borderRadius:'4px 4px 0 0',transition:'height 0.4s',minHeight:3,height:`${Math.min((h.drowsy/(h.total||1))*100,100)}%`,background:h.drowsy>0?'#ef4444':'rgba(255,255,255,0.06)'}}/>
+                <span style={{fontSize:8,color:'#475569',marginTop:4}}>{h._id}:00</span>
+              </div>)}</div>
             </div>
-
-            {report.topDrivers?.length > 0 && (
-              <div style={styles.card}>
-                <h3 style={styles.cardTitle}>Top Drivers by Drowsy Events</h3>
-                <div style={styles.driverList}>
-                  {report.topDrivers.map((d, i) => (
-                    <div key={i} style={styles.driverRow}>
-                      <span style={styles.rank}>#{i + 1}</span>
-                      <span style={styles.driverName}>{d.name}</span>
-                      <span style={styles.driverEmail}>{d.email}</span>
-                      <span style={styles.driverEvents}>{d.drowsyEvents} events</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+            <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+              <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:14}}>Alert Severity</h3>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>{(report.alertsBySeverity||[]).map(s=><div key={s._id} style={{background:'rgba(255,255,255,0.03)',borderRadius:10,padding:'12px',textAlign:'center',border:'1px solid rgba(255,255,255,0.06)'}}>
+                <span style={{fontSize:11,color:'#64748b',textTransform:'capitalize',display:'block',marginBottom:4}}>{s._id}</span>
+                <span style={{fontSize:22,fontWeight:700}}>{s.count}</span>
+              </div>)}</div>
+            </div>
+            {report.topDrivers?.length>0&&<div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
+              <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:14}}>Top Drivers by Drowsy Events</h3>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>{report.topDrivers.map((d,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.04)',fontSize:13}}>
+                <span style={{color:'#475569',fontWeight:700,width:26,fontSize:12}}>#{i+1}</span>
+                <div><span style={{fontWeight:600,display:'block',fontSize:12}}>{d.name}</span><span style={{fontSize:10,color:'#475569'}}>{d.email}</span></div>
+                <span style={{marginLeft:'auto',color:'#ef4444',fontWeight:600,fontSize:11}}>{d.drowsyEvents} events</span>
+              </div>)}</div>
+            </div>}
+          </div>
+        </>}
+      </div></div>
     </div>
   );
 }
-
-const styles = {
-  app: { minHeight: '100vh', background: '#0f0f23', color: '#fff', display: 'flex' },
-  main: { marginLeft: 240, flex: 1, padding: '24px 32px', overflowY: 'auto', maxHeight: '100vh' },
-  header: { marginBottom: 24 },
-  pageTitle: { fontSize: 24, fontWeight: 700 },
-  filterBar: { display: 'flex', alignItems: 'flex-end', gap: 16, marginBottom: 24, flexWrap: 'wrap' },
-  field: { display: 'flex', flexDirection: 'column', gap: 4 },
-  label: { fontSize: 13, color: '#8899aa', fontWeight: 500 },
-  dateInput: {
-    padding: '10px 14px',
-    borderRadius: 8,
-    border: '1px solid #2a2a4a',
-    background: '#16213e',
-    color: '#fff',
-    fontSize: 14,
-  },
-  applyBtn: {
-    padding: '10px 24px',
-    border: 'none',
-    borderRadius: 8,
-    background: '#00d4ff',
-    color: '#000',
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontSize: 14,
-  },
-  loading: { textAlign: 'center', padding: 60, color: '#8899aa' },
-  empty: { textAlign: 'center', padding: 60, color: '#8899aa' },
-  row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 },
-  card: {
-    background: '#1a1a2e',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-  },
-  cardTitle: { fontSize: 16, fontWeight: 600, marginBottom: 16 },
-  barChart: { display: 'flex', flexDirection: 'column', gap: 10 },
-  barRow: { display: 'flex', alignItems: 'center', gap: 12 },
-  barLabel: { minWidth: 100, fontSize: 13, textTransform: 'capitalize' },
-  barTrack: { flex: 1, height: 20, background: '#2a2a4a', borderRadius: 4, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 4, transition: 'width 0.5s', minWidth: 4 },
-  barCount: { minWidth: 40, textAlign: 'right', fontSize: 14, fontWeight: 600 },
-  hourlyChart: {
-    display: 'flex',
-    gap: 4,
-    height: 160,
-    alignItems: 'flex-end',
-    paddingBottom: 20,
-    position: 'relative',
-  },
-  hourBar: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  hourFill: { width: '70%', borderRadius: '4px 4px 0 0', transition: 'height 0.5s', minHeight: 4 },
-  hourLabel: { fontSize: 10, color: '#8899aa', marginTop: 4 },
-  severityGrid: { display: 'flex', gap: 16 },
-  severityItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1, padding: 12, background: '#16213e', borderRadius: 8 },
-  severityLabel: { textTransform: 'capitalize', fontSize: 14, fontWeight: 600 },
-  severityCount: { fontSize: 28, fontWeight: 700 },
-  driverList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  driverRow: { display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid #2a2a4a', fontSize: 14 },
-  rank: { color: '#8899aa', fontWeight: 700, width: 30 },
-  driverName: { fontWeight: 600, flex: 1 },
-  driverEmail: { color: '#8899aa', flex: 1 },
-  driverEvents: { color: '#f44336', fontWeight: 600 },
-};
