@@ -6,7 +6,7 @@
 |---------|-----|--------|
 | Landing Page | https://vigileye-landing.vercel.app | ✅ |
 | Driver App | https://vigileye-driver.vercel.app | ✅ |
-| Admin App | https://vigiley-admin.vercel.app | ✅ |
+| Admin App | https://vigileye-admin.vercel.app | ✅ |
 | Backend API | https://vigiley-backend.onrender.com | ✅ |
 | ML API | https://vigiley-ml.onrender.com | ✅ |
 
@@ -78,7 +78,7 @@
 2. New Project → Import each app:
    - `landing/` → URL: `https://vigiley.vercel.app`
    - `driver-app/` → URL: `https://vigiley-driver.vercel.app`
-   - `admin-app/` → URL: `https://vigiley-admin.vercel.app`
+    - `admin-app/` → URL: `https://vigileye-admin.vercel.app`
 3. Each app: Framework Preset → **Create React App**
 4. No build settings needed (auto-detects)
 
@@ -161,7 +161,7 @@ Internet
     │
     ├── https://vigiley.vercel.app (Landing) — Vercel
     ├── https://vigiley-driver.vercel.app (Driver) — Vercel
-    ├── https://vigiley-admin.vercel.app (Admin) — Vercel
+    ├── https://vigileye-admin.vercel.app (Admin) — Vercel
     │
     ├── https://vigiley-backend.onrender.com (Node.js API) — Render
     │       └── MongoDB Atlas (Database) — Cloud

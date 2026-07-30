@@ -17,7 +17,7 @@ const app = express();
 const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002',
-  'https://vigileye-driver.vercel.app', 'https://vigiley-admin.vercel.app', 'https://vigileye-landing.vercel.app',
+  'https://vigileye-driver.vercel.app', 'https://vigileye-admin.vercel.app', 'https://vigileye-landing.vercel.app',
   'https://vigiley-ml.onrender.com',
 ];
 
