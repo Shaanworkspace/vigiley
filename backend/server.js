@@ -15,14 +15,17 @@ const reportRoutes = require('./routes/report');
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = [
+  'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002',
+  'https://vigileye-driver.vercel.app', 'https://vigiley-admin.vercel.app', 'https://vigileye-landing.vercel.app',
+  'https://vigiley-ml.onrender.com',
+];
+
 const io = new Server(server, {
-  cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST', 'PUT', 'DELETE'] },
 });
 
-app.use(cors());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
