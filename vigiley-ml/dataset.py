@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.model_selection import train_test_split
 
 def generate_synthetic_dataset(n_samples=10000, noise=0.02):
     np.random.seed(42)
@@ -31,27 +30,9 @@ def generate_synthetic_dataset(n_samples=10000, noise=0.02):
     indices = np.random.permutation(len(X))
     X, y = X[indices], y[indices]
 
-    return train_test_split(X, y, test_size=0.2, random_state=42)
+    split = int(len(X) * 0.8)
+    return X[:split], X[split:], y[:split], y[split:]
 
-def load_nthu_dataset(data_path):
-    import glob
-    import json
-
-    X, y = [], []
-    for json_file in glob.glob(f'{data_path}/**/*.json', recursive=True):
-        with open(json_file) as f:
-            data = json.load(f)
-        X.append([
-            data.get('ear', 0.3),
-            data.get('mar', 0.1),
-            data.get('pitch', 0),
-            data.get('yaw', 0),
-            data.get('perclos', 0),
-        ])
-        y.append(1 if data.get('label') == 'drowsy' else 0)
-
-    X, y = np.array(X), np.array(y)
-    return train_test_split(X, y, test_size=0.2, random_state=42)
 
 if __name__ == '__main__':
     X_train, X_test, y_train, y_test = generate_synthetic_dataset()

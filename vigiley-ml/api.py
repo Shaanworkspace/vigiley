@@ -39,14 +39,25 @@ def predict():
         if frame is None:
             return jsonify({'error': 'Invalid image data'}), 400
 
+        h, w = frame.shape[:2]
+        if w > 640:
+            scale = 640 / w
+            new_w, new_h = int(w * scale), int(h * scale)
+            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+
         with lock:
             features = extractor.extract(frame, ear_history)
             if not features:
+                if len(ear_history) > 300:
+                    ear_history.clear()
                 return jsonify({'face_detected': False, 'status': 'no_face'})
 
             prediction, confidence = detector.predict_frame(features, ear_history)
             state, prob = detector.get_state()
             frame_count += 1
+
+        if len(ear_history) > 300:
+            ear_history[:100] = []
 
         result = {
             'face_detected': True,

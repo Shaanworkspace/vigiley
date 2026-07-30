@@ -2,8 +2,8 @@ import time
 
 EAR_THRESHOLD = 0.21
 MAR_THRESHOLD = 0.6
-CLOSE_FRAMES_THRESHOLD = 60
-YAWN_FRAMES_THRESHOLD = 30
+CLOSE_FRAMES = 60
+YAWN_FRAMES = 30
 NORMAL_FRAMES_RESET = 10
 
 class DrowsinessDetector:
@@ -35,33 +35,33 @@ class DrowsinessDetector:
                 self.close_counter = 0
                 self.yawn_counter = 0
 
-        if self.close_counter >= CLOSE_FRAMES_THRESHOLD:
+        if self.close_counter >= CLOSE_FRAMES:
             self.current_state = 'drowsy'
-            confidence = min(0.5 + (self.close_counter / CLOSE_FRAMES_THRESHOLD) * 0.5, 0.98)
+            confidence = min(0.5 + (self.close_counter / CLOSE_FRAMES) * 0.5, 0.98)
             return 1, round(confidence, 4)
-        elif self.yawn_counter >= YAWN_FRAMES_THRESHOLD:
+        elif self.yawn_counter >= YAWN_FRAMES:
             self.current_state = 'yawning'
-            confidence = min(0.5 + (self.yawn_counter / YAWN_FRAMES_THRESHOLD) * 0.3, 0.85)
+            confidence = min(0.5 + (self.yawn_counter / YAWN_FRAMES) * 0.3, 0.85)
             return 0, round(confidence, 4)
         else:
             self.current_state = 'normal'
             if self.close_counter > 0:
-                confidence = min(self.close_counter / CLOSE_FRAMES_THRESHOLD, 0.4)
+                confidence = min(self.close_counter / CLOSE_FRAMES, 0.4)
             elif self.yawn_counter > 0:
-                confidence = min(self.yawn_counter / YAWN_FRAMES_THRESHOLD, 0.3)
+                confidence = min(self.yawn_counter / YAWN_FRAMES, 0.3)
             else:
                 confidence = 0.0
             return 0, round(confidence, 4)
 
     def get_state(self):
-        if self.close_counter >= CLOSE_FRAMES_THRESHOLD:
-            return 'drowsy', min(0.5 + (self.close_counter / CLOSE_FRAMES_THRESHOLD) * 0.5, 0.98)
-        if self.yawn_counter >= YAWN_FRAMES_THRESHOLD:
-            return 'yawning', min(0.5 + (self.yawn_counter / YAWN_FRAMES_THRESHOLD) * 0.3, 0.85)
+        if self.close_counter >= CLOSE_FRAMES:
+            return 'drowsy', min(0.5 + (self.close_counter / CLOSE_FRAMES) * 0.5, 0.98)
+        if self.yawn_counter >= YAWN_FRAMES:
+            return 'yawning', min(0.5 + (self.yawn_counter / YAWN_FRAMES) * 0.3, 0.85)
         if self.close_counter > 0:
-            return 'closing', self.close_counter / CLOSE_FRAMES_THRESHOLD
+            return 'closing', self.close_counter / CLOSE_FRAMES
         if self.yawn_counter > 0:
-            return 'mouth_open', self.yawn_counter / YAWN_FRAMES_THRESHOLD
+            return 'mouth_open', self.yawn_counter / YAWN_FRAMES
         return 'normal', 0.0
 
     def reset(self):
