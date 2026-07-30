@@ -36,12 +36,12 @@ app.use((req, res, next) => {
 });
 
 const requestCounts = new Map();
-const RATE_LIMIT = 30;
+const RATE_LIMIT = 120;
 const RATE_WINDOW = 60000;
-const BURST_LIMIT = 5;
+const BURST_LIMIT = 10;
 
 app.use((req, res, next) => {
-  if (req.path === '/api/health' || req.path === '/api/wake-up') return next();
+  if (req.path === '/api/health' || req.path === '/api/wake-up' || req.path === '/api/driver/detection' || req.path === '/api/setup') return next();
   const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
   if (!requestCounts.has(ip)) {

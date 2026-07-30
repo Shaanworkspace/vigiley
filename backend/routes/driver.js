@@ -129,33 +129,29 @@ router.post('/detection', protect, async (req, res) => {
         updateFields.$set.peakDrowsinessScore = Math.round(sds * 10) / 10;
       }
 
+      const alertStatuses = ['drowsy', 'eyes_closed', 'yawning', 'microsleep', 'high_risk', 'critical'];
+      const confPct = (confidence || 0) * 100;
       const nonDrowsyThreshold = 30;
-      if (['drowsy', 'eyes_closed', 'yawning'].includes(status) || sds > nonDrowsyThreshold) {
+      if (alertStatuses.includes(status) || sds > nonDrowsyThreshold) {
         const alertSeverity =
           status === 'critical' || sds > 85
             ? 'critical'
-            : sds > 70 || confidence > 80
+            : sds > 70 || confPct > 80
               ? 'high'
-              : sds > 50 || confidence > 60
+              : sds > 50 || confPct > 60
                 ? 'medium'
                 : 'low';
 
-        if (['drowsy', 'eyes_closed', 'yawning'].includes(status) || alertSeverity !== 'low') {
+        if (alertStatuses.includes(status) || alertSeverity !== 'low') {
+          const typeMap = { yawning: 'yawning', eyes_closed: 'eyes_closed', drowsy: 'drowsiness', microsleep: 'drowsiness', high_risk: 'drowsiness', critical: 'critical' };
           const alertData = {
             driver: req.user._id,
-            type:
-              status === 'yawning'
-                ? 'yawning'
-                : status === 'eyes_closed'
-                  ? 'eyes_closed'
-                  : status === 'drowsy'
-                    ? 'drowsiness'
-                    : 'distraction',
+            type: typeMap[status] || 'distraction',
             severity: alertSeverity,
             message:
               sds > nonDrowsyThreshold
                 ? `SDS threshold exceeded: ${Math.round(sds)}% — possible drowsiness`
-                : `${status.replace('_', ' ')} detected with ${confidence.toFixed(1)}% confidence`,
+                : `${status.replace('_', ' ')} detected with ${confPct.toFixed(0)}% confidence`,
           };
 
           const alert = await Alert.create(alertData);

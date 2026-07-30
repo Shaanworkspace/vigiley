@@ -176,7 +176,15 @@ export default function VideoFeed() {
         setSt(d.status); setCc(d.close_counter); setYc(d.yawn_counter);
         setBox(d.face_box); setEyePts(d.eye_points); setMouthPts(d.mouth_points);
         lastGood.current = { ear: d.ear, mar: d.mar, st: d.status, cc: d.close_counter, yc: d.yawn_counter, conf: d.confidence, perclos: d.perclos };
-        driverAPI.sendDetection(d).catch(() => {});
+        driverAPI.sendDetection({
+          status: d.status,
+          confidence: d.confidence,
+          eyeAspectRatio: d.ear,
+          mouthAspectRatio: d.mar,
+          headPitch: d.pitch,
+          headYaw: d.yaw,
+          perclos: d.perclos,
+        }).catch(() => {});
       } else {
         setNoFace(true);
         setErr('Face lost — stay in camera view');
