@@ -75,12 +75,20 @@ function WarningBar({ icon, label, value, warns }) {
 
 function drawFace(ctx, w, h, box, eyePts, mouthPts, ear, mar, earClosed) {
   if (!box) return;
-  const sx = ctx.canvas.width / w;
-  const sy = ctx.canvas.height / h;
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  const sx = cw / w, sy = ch / h;
   const [fx, fy, fw, fh] = box;
+
+  const mx = (x) => (w - x) * sx;
+  const my = (y) => y * sy;
+
   const c = ear < EAR_CLOSED ? '#ef4444' : ear < EAR_LOW ? '#eab308' : '#22c55e';
 
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.clearRect(0, 0, cw, ch);
+
+  ctx.save();
+  ctx.translate(cw, 0);
+  ctx.scale(-1, 1);
 
   ctx.strokeStyle = c;
   ctx.lineWidth = 2;
@@ -110,9 +118,11 @@ function drawFace(ctx, w, h, box, eyePts, mouthPts, ear, mar, earClosed) {
     });
   }
 
+  ctx.restore();
+
   ctx.font = 'bold 11px monospace';
   ctx.fillStyle = c;
-  ctx.fillText(`EAR:${ear.toFixed(2)}`, (fx + 4) * sx, (fy - 6) * sy);
+  ctx.fillText(`EAR:${ear.toFixed(2)}`, mx(fx + 4), (fy - 6) * sy);
 }
 
 export default function VideoFeed() {
