@@ -37,18 +37,32 @@ export default function Dashboard() {
   const prevLen = useRef(0);
 
   useEffect(() => { load(); }, []);
+  const resolvedIds = useRef(new Set());
+  const timerRefs = useRef({});
+  const [fullScreenAlert, setFullScreenAlert] = useState(null);
+
   useEffect(() => {
     if (liveAlerts.length > prevLen.current) {
       const newAlerts = liveAlerts.slice(0, liveAlerts.length - prevLen.current);
-      newAlerts.forEach((a, i) => {
-        const id = Date.now() + i;
+      newAlerts.forEach(a => {
+        const id = Date.now() + Math.random();
         setToasts(p => [...p, { ...a, _toastId: id }]);
-        setTimeout(() => setToasts(p => p.filter(t => t._toastId !== id)), 4000);
+        timerRefs.current[id] = setTimeout(() => {
+          if (!resolvedIds.current.has(id)) setFullScreenAlert(a);
+          setToasts(p => p.filter(t => t._toastId !== id));
+          delete timerRefs.current[id];
+        }, 10000);
       });
     }
     prevLen.current = liveAlerts.length;
     if (liveAlerts.length > 0 && stats) setStats(p => ({ ...p, totalAlerts: p.totalAlerts + liveAlerts.length, unacknowledgedAlerts: p.unacknowledgedAlerts + liveAlerts.length }));
   }, [liveAlerts]);
+
+  const dismissToast = (id) => {
+    resolvedIds.current.add(id);
+    if (timerRefs.current[id]) { clearTimeout(timerRefs.current[id]); delete timerRefs.current[id]; }
+    setToasts(p => p.filter(t => t._toastId !== id));
+  };
   useEffect(() => { if (lr.current) { lr.current.scrollTop = 0; } }, [liveAlerts]);
 
   const load = async () => {
@@ -78,6 +92,39 @@ export default function Dashboard() {
         background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139,92,246,0.12), transparent), radial-gradient(ellipse 50% 40% at 80% 30%, rgba(59,130,246,0.06), transparent)',
         pointerEvents: 'none', zIndex: 0,
       }} />
+      {/* Full-screen Alert Overlay */}
+      {fullScreenAlert && (() => {
+        const sev = fullScreenAlert.severity || 'critical';
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 999,
+            background: `radial-gradient(ellipse at center, ${RC[sev]}44 0%, ${RC[sev]}22 40%, rgba(0,0,0,0.92) 100%)`,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+            animation: 'fs 0.4s cubic-bezier(0.16,1,0.3,1)',
+          }}>
+            <div style={{
+              fontSize: 64, fontWeight: 900, color: RC[sev],
+              textShadow: `0 0 40px ${RC[sev]}, 0 0 80px ${RC[sev]}44`,
+              animation: 'fp 0.8s ease-in-out infinite',
+            }}>⚠</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', textAlign: 'center', maxWidth: 500 }}>
+              {fullScreenAlert.driver?.name || 'Driver'} — {fullScreenAlert.type?.replace(/_/g, ' ') || 'Alert'}
+            </div>
+            <div style={{ fontSize: 15, color: '#94a3b8', textAlign: 'center', maxWidth: 400 }}>
+              {fullScreenAlert.message || 'No response to critical alert'}
+            </div>
+            {fullScreenAlert.sds && (
+              <div style={{ fontSize: 40, fontWeight: 700, color: '#fff' }}>{fullScreenAlert.sds}% SDS</div>
+            )}
+            <button style={{
+              marginTop: 8, padding: '12px 32px', borderRadius: 12, border: 'none',
+              background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 15, fontWeight: 600,
+              cursor: 'pointer', backdropFilter: 'blur(8px)',
+            }} onClick={() => setFullScreenAlert(null)}>Acknowledge & Dismiss</button>
+          </div>
+        );
+      })()}
+
       {/* Toast Notifications */}
       <div style={{ position: 'fixed', top: 80, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
         {toasts.map(t => {
@@ -86,9 +133,9 @@ export default function Dashboard() {
           return (
             <div key={t._toastId} style={{
               background: '#0f172a', border: `1px solid ${RC[sev]}44`, borderLeft: `3px solid ${RC[sev]}`,
-              borderRadius: 12, padding: '10px 14px', minWidth: 280, maxWidth: 360,
-              boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${RC[sev]}22`,
-              animation: 'tf 0.35s cubic-bezier(0.16,1,0.3,1), tfOut 0.3s cubic-bezier(0.16,1,0.3,1) 3.7s forwards',
+              borderRadius: 12, padding: '10px 14px', minWidth: 300, maxWidth: 360,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.5)`,
+              animation: 'tf 0.35s cubic-bezier(0.16,1,0.3,1)',
               pointerEvents: 'auto',
             }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -107,6 +154,18 @@ export default function Dashboard() {
                     <span style={{ textTransform: 'capitalize', fontWeight: 600, color: '#cbd5e1' }}>{t.type?.replace(/_/g, ' ')}</span>
                     {t.sds && <span style={{ color: RC[sev], marginLeft: 4 }}>SDS {t.sds}%</span>}
                   </p>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button style={{
+                      flex: 1, padding: '5px 0', borderRadius: 8, border: 'none',
+                      background: 'rgba(34,197,94,0.15)', color: '#86efac',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    }} onClick={() => dismissToast(t._toastId)}>✓ Accept</button>
+                    <button style={{
+                      flex: 1, padding: '5px 0', borderRadius: 8, border: 'none',
+                      background: 'rgba(239,68,68,0.12)', color: '#fca5a5',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    }} onClick={() => dismissToast(t._toastId)}>✗ Reject</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -478,6 +537,8 @@ export default function Dashboard() {
         @keyframes sf { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes tf { from { opacity: 0; transform: translateX(60px) scale(0.9); } to { opacity: 1; transform: translateX(0) scale(1); } }
         @keyframes tfOut { to { opacity: 0; transform: translateX(40px) scale(0.95); } }
+        @keyframes fs { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fp { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.15); } }
       `}</style>
     </div>
   );
