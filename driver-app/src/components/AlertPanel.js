@@ -38,9 +38,15 @@ export default function AlertPanel() {
   return (
     <div style={{ position: 'relative', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', minHeight: 400 }}>
       {/* Toast notifications */}
+      {/* Toast flash notifications */}
       <div style={{ position: 'absolute', top: -12, left: 0, right: 0, zIndex: 20, display: 'flex', flexDirection: 'column', gap: 6, padding: '0 8px', pointerEvents: 'none' }}>
         {toasts.map(t => {
           const v = SV[t.severity] || SV.low;
+          const dismiss = () => {
+            setToasts(p => p.filter(x => x._tid !== t._tid));
+            if (t.alertId) ack(t.alertId);
+            load();
+          };
           return (
             <div key={t._tid} style={{
               background: '#0f172a', border: `1px solid ${v.dot}44`, borderLeft: `3px solid ${v.dot}`,
@@ -48,13 +54,27 @@ export default function AlertPanel() {
               animation: 'tf 0.35s cubic-bezier(0.16,1,0.3,1), tfOut 0.3s ease-in 3.7s forwards',
               pointerEvents: 'auto',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={14} color={v.dot} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <AlertTriangle size={14} color={v.dot} style={{ marginTop: 2 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, textTransform: 'capitalize' }}>{t.type?.replace(/_/g, ' ')}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{t.message}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, textTransform: 'capitalize' }}>{t.type?.replace(/_/g, ' ')}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', padding: '1px 7px', borderRadius: 8, background: v.dot, textTransform: 'uppercase' }}>{t.severity}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>{t.message}</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button style={{
+                      flex: 1, padding: '5px 0', borderRadius: 8, border: 'none',
+                      background: 'rgba(34,197,94,0.15)', color: '#86efac',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    }} onClick={dismiss}>✓ Accept</button>
+                    <button style={{
+                      flex: 1, padding: '5px 0', borderRadius: 8, border: 'none',
+                      background: 'rgba(239,68,68,0.12)', color: '#fca5a5',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    }} onClick={dismiss}>✗ Reject</button>
+                  </div>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', padding: '1px 7px', borderRadius: 8, background: v.dot, textTransform: 'uppercase' }}>{t.severity}</span>
               </div>
             </div>
           );

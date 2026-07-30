@@ -25,8 +25,8 @@ Based on well-known published research:
    PERCLOS_WINDOW  60        60 frames (~60s) for real-time PERCLOS;
                               input rate is ~1 fps from VideoFeed
 
-   FRAMES_CLOSED   2         2s sustained closure → "eyes_closed" state
-                              (blink filtered, ~300ms typical blink)
+   FRAMES_CLOSED   1         1 frame (1s) closure → "eyes_closed" state
+                              (immediate detection, catches first second)
 
    FRAMES_MICRO    2         2s sustained closure → "microsleep"
                               NHTSA definition: 1-5s microsleep episodes
@@ -66,7 +66,7 @@ MAR_THRESHOLD = 0.50
 PERCLOS_WINDOW = 180
 PERCLOS_RISK = 0.30
 
-FRAMES_CLOSED = 2
+FRAMES_CLOSED = 1
 FRAMES_MICRO = 2
 FRAMES_DROWSY = 3
 FRAMES_CRITICAL = 5
