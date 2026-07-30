@@ -14,7 +14,6 @@ CORS(app)
 
 extractor = FeatureExtractor()
 detector = DrowsinessDetector()
-detector.load('model')
 ws_client = AlertWebSocketClient()
 
 ear_history = []
@@ -23,11 +22,7 @@ lock = threading.Lock()
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({
-        'status': 'ok',
-        'model': 'vigiley-ml',
-        'ws_connected': ws_client.connected,
-    })
+    return jsonify({'status': 'ok', 'model': 'vigiley-ml', 'ws_connected': ws_client.connected})
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -41,7 +36,6 @@ def predict():
         image_data = base64.b64decode(data['image'])
         np_arr = np.frombuffer(image_data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
         if frame is None:
             return jsonify({'error': 'Invalid image data'}), 400
 
@@ -51,21 +45,24 @@ def predict():
                 return jsonify({'face_detected': False, 'status': 'no_face'})
 
             prediction, confidence = detector.predict_frame(features, ear_history)
+            state, prob = detector.get_state()
             frame_count += 1
 
         result = {
             'face_detected': True,
-            'status': 'drowsy' if prediction == 1 else 'normal',
-            'confidence': round(confidence, 4),
+            'status': state,
+            'drowsy': prediction == 1,
+            'confidence': confidence,
             'ear': features['eye_aspect_ratio'],
             'mar': features['mouth_aspect_ratio'],
             'pitch': features['head_pitch'],
             'yaw': features['head_yaw'],
-            'perclos': features['perclos'],
+            'close_counter': detector.close_counter,
+            'yawn_counter': detector.yawn_counter,
             'frame_id': frame_count,
         }
 
-        if prediction == 1 and confidence > 0.7:
+        if state == 'drowsy' and confidence > 0.7:
             threading.Thread(target=ws_client.send_alert, args=(result,), daemon=True).start()
 
         return jsonify(result)
@@ -77,6 +74,7 @@ def predict():
 def reset():
     with lock:
         ear_history.clear()
+        detector.reset()
         global frame_count
         frame_count = 0
     return jsonify({'status': 'reset_ok'})

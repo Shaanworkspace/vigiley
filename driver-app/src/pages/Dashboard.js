@@ -3,70 +3,129 @@ import Navbar from '../components/Navbar';
 import VideoFeed from '../components/VideoFeed';
 import AlertPanel from '../components/AlertPanel';
 import { driverAPI } from '../services/api';
-import { Activity, AlertTriangle, ScanLine, Shield } from 'lucide-react';
+import { ScanLine, AlertTriangle, Activity, Shield } from 'lucide-react';
 
-const RC = {low:'#22c55e',medium:'#f59e0b',high:'#ef4444',critical:'#dc2626'};
+const RC = { low: '#22c55e', medium: '#f59e0b', high: '#ef4444', critical: '#dc2626' };
+
+function Gauge({ value, max, label, color, size = 100 }) {
+  const r = 40, circ = 2 * Math.PI * r, off = circ - (value / max) * circ;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="8"
+          strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round"
+          transform="rotate(-90 50 50)" style={{ transition: 'stroke-dashoffset 0.3s ease' }} />
+        <text x="50" y="48" textAnchor="middle" fill="#fff" fontSize="20" fontWeight="bold">
+          {value.toFixed(2)}
+        </text>
+        <text x="50" y="65" textAnchor="middle" fill="#64748b" fontSize="9">{label}</text>
+      </svg>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, sub, color }) {
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+      borderRadius: 14, padding: '16px 18px', backdropFilter: 'blur(8px)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: `${color}18`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={15} color={color} />
+        </div>
+        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
 
 export default function Dashboard() {
-  const [st, setSt] = useState({todayLogs:0,todayDrowsyEvents:0,recentAlerts:[],activeSession:null,hourlyBreakdown:[]});
-  const [ld, setLd] = useState(true);
-  const [vis, setVis] = useState({});
+  const [data, setData] = useState({ todayLogs: 0, todayDrowsyEvents: 0, recentAlerts: [], activeSession: null, hourlyBreakdown: [] });
+  const [loading, setLoading] = useState(true);
 
-  useEffect(()=>{
-    load();
-    const i=setInterval(load,10000);
-    return ()=>clearInterval(i);
-  },[]);
-
-  useEffect(()=>{
-    if(!ld){
-      const t=setTimeout(()=>setVis({a:true,b:true,c:true,d:true}),50);
-      return ()=>clearTimeout(t);
-    }
-  },[ld]);
+  useEffect(() => { load(); const i = setInterval(load, 8000); return () => clearInterval(i); }, []);
 
   const load = async () => {
-    try{const r=await driverAPI.getDashboard();setSt(r.data)}catch(_){}finally{setLd(false)}
+    try { const r = await driverAPI.getDashboard(); setData(r.data); } catch (_) { } finally { setLoading(false); }
   };
 
-  const s = st.activeSession;
-  const rc = RC[s?.riskLevel]||'#22c55e';
-
-  const cards = [
-    {l:'Scans Today',v:st.todayLogs,Icon:ScanLine,c:'#3b82f6',k:'a'},
-    {l:'Drowsy Events',v:st.todayDrowsyEvents,Icon:AlertTriangle,c:'#f59e0b',k:'b'},
-    {l:'Session',v:s?'Active':'Inactive',Icon:Activity,c:s?'#22c55e':'#475569',k:'c'},
-    {l:'SDS Score',v:s?`${s.drowsinessScore?.toFixed(0)||'0'}`:'—',Icon:Shield,c:'#8b5cf6',k:'d'},
-  ];
+  const s = data.activeSession;
+  const riskColor = RC[s?.riskLevel] || '#22c55e';
 
   return (
-    <div style={{minHeight:'100vh',background:'#020617'}}>
-      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(59,130,246,0.12),transparent),radial-gradient(ellipse 50% 40% at 80% 30%,rgba(99,102,241,0.06),transparent)',pointerEvents:'none',zIndex:0}}/>
-      <div style={{position:'relative',zIndex:1}}>
+    <div style={{ minHeight: '100vh', background: '#020617' }}>
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.1), transparent), radial-gradient(ellipse 50% 40% at 80% 30%, rgba(99,102,241,0.05), transparent)',
+        pointerEvents: 'none', zIndex: 0
+      }} />
+      <div style={{ position: 'relative', zIndex: 1 }}>
         <Navbar />
-        <div style={{maxWidth:1200,margin:'0 auto',padding:'20px 24px 40px'}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:20}}>
-            {cards.map((c,i)=>{
-              const I=c.Icon;
-              return <div key={c.l} style={{
-                background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:'18px 16px',backdropFilter:'blur(4px)',
-                borderTop:`3px solid ${c.c}`,
-                opacity:vis[c.k]?1:0,transform:vis[c.k]?'translateY(0)':'translateY(16px)',
-                transition:`all 0.6s cubic-bezier(0.16,1,0.3,1) ${i*0.08}s`,
-              }}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                  <div style={{width:34,height:34,borderRadius:10,background:`${c.c}15`,color:c.c,display:'flex',alignItems:'center',justifyContent:'center'}}><I size={16}/></div>
-                  {c.l==='SDS Score'&&s&&<span style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',padding:'2px 10px',borderRadius:20,background:rc+'20',color:rc}}>{s.riskLevel}</span>}
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 28px 40px' }}>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 80, color: '#64748b', fontSize: 14 }}>Loading...</div>
+          ) : (
+            <>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                <div>
+                  <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Driver Dashboard</h1>
+                  <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
+                    {s ? `Session active — Risk: ${s.riskLevel || 'low'}` : 'No active session'}
+                  </p>
                 </div>
-                <span style={{fontSize:24,fontWeight:700}}>{c.v}</span>
-                <span style={{fontSize:12,color:'#64748b',fontWeight:500,display:'block',marginTop:2}}>{c.l}</span>
+                {s && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${riskColor}12`, border: `1px solid ${riskColor}25`,
+                    borderRadius: 20, padding: '6px 16px 6px 12px' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: riskColor }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: riskColor, textTransform: 'uppercase' }}>
+                      {s.riskLevel || 'low'} Risk
+                    </span>
+                  </div>
+                )}
               </div>
-            })}
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 380px',gap:20,alignItems:'start'}}>
-            <VideoFeed />
-            <AlertPanel />
-          </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 20 }}>
+                <StatCard icon={ScanLine} label="Today's Scans" value={data.todayLogs} color="#3b82f6" />
+                <StatCard icon={AlertTriangle} label="Drowsy Events" value={data.todayDrowsyEvents} color="#ef4444" />
+                <StatCard icon={Activity} label="Session Status"
+                  value={s ? `${Math.floor((Date.now() - new Date(s.startTime).getTime()) / 60000)}m` : 'Inactive'}
+                  sub={s ? `Started ${new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  color={s ? '#22c55e' : '#475569'} />
+                <StatCard icon={Shield} label="SDS Score"
+                  value={s ? `${s.drowsinessScore?.toFixed(0) || 0}%` : '—'}
+                  sub={s ? `Detections: ${s.detectionCount || 0}` : ''}
+                  color={riskColor} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <VideoFeed />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+                    {data.hourlyBreakdown?.slice(0, 3).map((h, i) => (
+                      <div key={i} style={{
+                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: 14, padding: 16, backdropFilter: 'blur(8px)'
+                      }}>
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Hour {h._id || i + 1}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{h.count || 0}</div>
+                        <div style={{ fontSize: 11, color: '#475569' }}>events</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <AlertPanel />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

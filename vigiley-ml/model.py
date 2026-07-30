@@ -1,102 +1,74 @@
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-import joblib
-import os
+import time
 
-FEATURE_NAMES = ['eye_aspect_ratio', 'mouth_aspect_ratio', 'head_pitch', 'head_yaw', 'perclos']
-CLASS_NAMES = ['normal', 'drowsy']
+EAR_THRESHOLD = 0.21
+MAR_THRESHOLD = 0.6
+CLOSE_FRAMES_THRESHOLD = 60
+YAWN_FRAMES_THRESHOLD = 30
+NORMAL_FRAMES_RESET = 10
 
 class DrowsinessDetector:
     def __init__(self):
-        self.classifier = RandomForestClassifier(
-            n_estimators=200,
-            max_depth=12,
-            min_samples_split=10,
-            min_samples_leaf=4,
-            random_state=42,
-            class_weight='balanced',
-            n_jobs=-1,
-        )
-        self.scaler = StandardScaler()
-        self.feature_history = []
+        self.close_counter = 0
+        self.yawn_counter = 0
+        self.normal_counter = 0
+        self.total_drowsy_events = 0
+        self.total_yawn_events = 0
+        self.current_state = 'normal'
         self.ear_history = []
-        self.window_size = 30
+        self.alerts = []
 
-    def extract_features_vector(self, features):
-        return np.array([
-            features['eye_aspect_ratio'],
-            features['mouth_aspect_ratio'],
-            features['head_pitch'],
-            features['head_yaw'],
-            features['perclos'],
-        ]).reshape(1, -1)
+    def predict_frame(self, features, ear_history=None):
+        ear = features['eye_aspect_ratio']
+        mar = features['mouth_aspect_ratio']
 
-    def smooth_predict(self, features, confidence_threshold=0.6):
-        vec = self.extract_features_vector(features)
-        scaled = self.scaler.transform(vec)
+        eyes_closed = ear < EAR_THRESHOLD
+        yawning = mar > MAR_THRESHOLD
 
-        proba = self.classifier.predict_proba(scaled)[0]
-        prediction = self.classifier.predict(scaled)[0]
-        confidence = float(np.max(proba))
+        if eyes_closed:
+            self.close_counter += 1
+            self.normal_counter = 0
+        elif yawning:
+            self.yawn_counter += 1
+        else:
+            self.normal_counter += 1
+            if self.normal_counter >= NORMAL_FRAMES_RESET:
+                self.close_counter = 0
+                self.yawn_counter = 0
 
-        self.feature_history.append({
-            'features': features,
-            'prediction': prediction,
-            'confidence': confidence,
-        })
+        if self.close_counter >= CLOSE_FRAMES_THRESHOLD:
+            self.current_state = 'drowsy'
+            confidence = min(0.5 + (self.close_counter / CLOSE_FRAMES_THRESHOLD) * 0.5, 0.98)
+            return 1, round(confidence, 4)
+        elif self.yawn_counter >= YAWN_FRAMES_THRESHOLD:
+            self.current_state = 'yawning'
+            confidence = min(0.5 + (self.yawn_counter / YAWN_FRAMES_THRESHOLD) * 0.3, 0.85)
+            return 0, round(confidence, 4)
+        else:
+            self.current_state = 'normal'
+            if self.close_counter > 0:
+                confidence = min(self.close_counter / CLOSE_FRAMES_THRESHOLD, 0.4)
+            elif self.yawn_counter > 0:
+                confidence = min(self.yawn_counter / YAWN_FRAMES_THRESHOLD, 0.3)
+            else:
+                confidence = 0.0
+            return 0, round(confidence, 4)
 
-        if len(self.feature_history) > self.window_size:
-            self.feature_history.pop(0)
+    def get_state(self):
+        if self.close_counter >= CLOSE_FRAMES_THRESHOLD:
+            return 'drowsy', min(0.5 + (self.close_counter / CLOSE_FRAMES_THRESHOLD) * 0.5, 0.98)
+        if self.yawn_counter >= YAWN_FRAMES_THRESHOLD:
+            return 'yawning', min(0.5 + (self.yawn_counter / YAWN_FRAMES_THRESHOLD) * 0.3, 0.85)
+        if self.close_counter > 0:
+            return 'closing', self.close_counter / CLOSE_FRAMES_THRESHOLD
+        if self.yawn_counter > 0:
+            return 'mouth_open', self.yawn_counter / YAWN_FRAMES_THRESHOLD
+        return 'normal', 0.0
 
-        if len(self.feature_history) >= 5:
-            recent_preds = [h['prediction'] for h in self.feature_history[-5:]]
-            majority = max(set(recent_preds), key=recent_preds.count)
-            majority_count = recent_preds.count(majority)
+    def reset(self):
+        self.close_counter = 0
+        self.yawn_counter = 0
+        self.normal_counter = 0
+        self.current_state = 'normal'
 
-            if majority_count >= 4:
-                avg_confidence = np.mean([h['confidence'] for h in self.feature_history[-5:]])
-                return int(majority), float(avg_confidence)
-
-        if confidence >= confidence_threshold:
-            return int(prediction), confidence
-
-        return 0, 0.0
-
-    def predict_frame(self, features, ear_history):
-        features['perclos'] = self._compute_perclos(ear_history)
-        result = self.smooth_predict(features)
-        return result
-
-    def _compute_perclos(self, ear_history, threshold=0.21, window=90):
-        if len(ear_history) < 10:
-            return 0.0
-        recent = ear_history[-min(len(ear_history), window):]
-        closed_count = sum(1 for ear in recent if ear < threshold)
-        return closed_count / max(len(recent), 1)
-
-    def train(self, X, y):
-        self.scaler.fit(X)
-        X_scaled = self.scaler.transform(X)
-        self.classifier.fit(X_scaled, y)
-        train_score = self.classifier.score(X_scaled, y)
-        return train_score
-
-    def evaluate(self, X, y):
-        X_scaled = self.scaler.transform(X)
-        return {
-            'accuracy': float(self.classifier.score(X_scaled, y)),
-            'predictions': self.classifier.predict(X_scaled).tolist(),
-            'probabilities': self.classifier.predict_proba(X_scaled).tolist(),
-        }
-
-    def save(self, path='model'):
-        os.makedirs(path, exist_ok=True)
-        joblib.dump(self.classifier, os.path.join(path, 'classifier.pkl'))
-        joblib.dump(self.scaler, os.path.join(path, 'scaler.pkl'))
-        print(f'Model saved to {path}/')
-
-    def load(self, path='model'):
-        self.classifier = joblib.load(os.path.join(path, 'classifier.pkl'))
-        self.scaler = joblib.load(os.path.join(path, 'scaler.pkl'))
-        print(f'Model loaded from {path}/')
+    def load(self, path=None):
+        pass
