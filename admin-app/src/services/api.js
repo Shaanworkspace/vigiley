@@ -4,7 +4,7 @@ const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 65000,
+  timeout: 75000,
 });
 
 let loadingCallbacks = [];
@@ -12,23 +12,9 @@ export const onLoadingChange = (cb) => { loadingCallbacks.push(cb); return () =>
 const notifyLoading = (val) => loadingCallbacks.forEach(cb => cb(val));
 
 let activeRequests = 0;
-let waking = false;
-let wakePromise = null;
 
-const wakeUp = async () => {
-  if (waking) return wakePromise;
-  waking = true;
-  wakePromise = axios.get(`${BASE_URL}/wake-up`, { timeout: 55000 })
-    .then(() => { waking = false; })
-    .catch(() => { waking = false; });
-  return wakePromise;
-};
-
-api.interceptors.request.use(async (config) => {
-  if (activeRequests === 0) {
-    notifyLoading(true);
-    await wakeUp();
-  }
+api.interceptors.request.use((config) => {
+  if (activeRequests === 0) notifyLoading(true);
   activeRequests++;
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;

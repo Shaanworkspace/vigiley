@@ -35,34 +35,6 @@ app.use((req, res, next) => {
   next();
 });
 
-let reqQueue = [];
-let processing = false;
-
-function processQueue() {
-  if (processing || reqQueue.length === 0) return;
-  processing = true;
-  const entry = reqQueue.shift();
-  const { req, res, next } = entry;
-  let responded = false;
-  const wrap = (fn) => function(body) {
-    if (responded) return;
-    responded = true;
-    processing = false;
-    processQueue();
-    return fn.call(this, body);
-  };
-  res.send = wrap(res.send);
-  res.json = wrap(res.json);
-  res.end = wrap(res.end);
-  next();
-}
-
-app.use((req, res, next) => {
-  if (req.path === '/api/health' || req.path === '/api/wake-up') return next();
-  reqQueue.push({ req, res, next });
-  if (reqQueue.length <= 1) processQueue();
-});
-
 const requestCounts = new Map();
 const RATE_LIMIT = 30;
 const RATE_WINDOW = 60000;
@@ -104,7 +76,7 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/reports', reportRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), queueLength: reqQueue.length });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/wake-up', (req, res) => {
