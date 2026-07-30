@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import LoadingOverlay from './components/LoadingOverlay';
 
 const g = `
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -18,6 +19,7 @@ export default function App() {
   return (
     <>
       <style>{g}</style>
+      <LoadingOverlay />
       <BrowserRouter>
         <AuthProvider>
           <SocketProvider>

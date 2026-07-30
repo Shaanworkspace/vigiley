@@ -18,7 +18,10 @@ export default function Login() {
     e.preventDefault();
     setError(''); setLoading(true);
     try { await login(email, password); navigate('/admin/dashboard'); }
-    catch (err) { setError(err.response?.data?.message || err.message || 'Invalid credentials'); }
+    catch (err) {
+      if (!err.response) setError('Server is waking up... Please try again in 20-30 seconds.');
+      else setError(err.response?.data?.message || 'Invalid credentials');
+    }
     finally { setLoading(false); }
   };
 

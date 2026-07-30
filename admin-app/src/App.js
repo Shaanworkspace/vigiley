@@ -9,6 +9,7 @@ import DriverDetail from './pages/DriverDetail';
 import Alerts from './pages/Alerts';
 import Reports from './pages/Reports';
 import ProtectedRoute from './components/ProtectedRoute';
+import LoadingOverlay from './components/LoadingOverlay';
 
 const g = `@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}`;
 
@@ -16,6 +17,7 @@ export default function App() {
   return (
     <>
       <style>{g}</style>
+      <LoadingOverlay />
       <BrowserRouter>
         <AuthProvider>
           <SocketProvider>

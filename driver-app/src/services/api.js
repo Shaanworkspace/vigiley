@@ -1,20 +1,34 @@
 import axios from 'axios';
 
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5001/api',
+  baseURL: BASE_URL,
+  timeout: 45000,
 });
 
+let loadingCallbacks = [];
+export const onLoadingChange = (cb) => { loadingCallbacks.push(cb); return () => { loadingCallbacks = loadingCallbacks.filter(c => c !== cb); }; };
+const notifyLoading = (val) => loadingCallbacks.forEach(cb => cb(val));
+
+let activeRequests = 0;
 api.interceptors.request.use((config) => {
+  activeRequests++;
+  notifyLoading(true);
   const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    activeRequests--;
+    if (activeRequests <= 0) { activeRequests = 0; notifyLoading(false); }
+    return response;
+  },
   (error) => {
+    activeRequests--;
+    if (activeRequests <= 0) { activeRequests = 0; notifyLoading(false); }
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
