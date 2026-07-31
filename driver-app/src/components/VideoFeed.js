@@ -1,14 +1,24 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Webcam from 'react-webcam';
+import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
 import { driverAPI } from '../services/api';
 import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from 'lucide-react';
 
-const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
-const CAPTURE_INTERVAL = 1000;
 const EAR_CLOSED = 0.28;
 const EAR_LOW = 0.34;
-const MAR_YAWN = 0.40;
+const MAR_THRESHOLD = 0.40;
 const MAR_HALF = 0.30;
+const PERCLOS_WINDOW = 60;
+
+const FRAMES_CLOSED = 1;
+const FRAMES_MICRO = 2;
+const FRAMES_DROWSY = 3;
+const FRAMES_CRITICAL = 5;
+const FRAMES_YAWN = 2;
+const FRAMES_RESET = 5;
+
+const UI_SYNC_MS = 150;
+const SEND_MS = 1000;
 
 const EAR_WARN = [
   { min: 0.34, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
@@ -48,6 +58,24 @@ const STATE_WARN = {
 
 const LV = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#b91c1c'];
 
+const LEFT_EYE = [33, 158, 159, 133, 153, 144];
+const RIGHT_EYE = [362, 385, 386, 263, 373, 374];
+const MAR_UPPER = [13, 14];
+const MAR_LOWER = [78, 308];
+const MAR_L_CORNER = 61;
+const MAR_R_CORNER = 291;
+
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function aspect(eye, lms) {
+  const a = dist(lms[eye[1]], lms[eye[5]]);
+  const b = dist(lms[eye[2]], lms[eye[4]]);
+  const c = dist(lms[eye[0]], lms[eye[3]]) || 1e-6;
+  return (a + b) / (2 * c);
+}
+
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function WarningIcon({ lv }) {
@@ -85,9 +113,11 @@ function WarningBar({ label, value, warns }) {
 
 export default function VideoFeed({ onStatusChange }) {
   const wc = useRef(null);
-  const iv = useRef(null);
+  const rafRef = useRef(null);
   const [on, setOn] = useState(false);
   const [se, setSe] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
+  const [modelErr, setModelErr] = useState('');
 
   const [ear, setEar] = useState(0.35);
   const [mar, setMar] = useState(0.25);
@@ -96,68 +126,165 @@ export default function VideoFeed({ onStatusChange }) {
   const [st, setSt] = useState('awake');
   const [cc, setCc] = useState(0);
   const [yc, setYc] = useState(0);
-  const [err, setErr] = useState('');
   const [noFace, setNoFace] = useState(false);
+  const [err, setErr] = useState('');
 
+  const model = useRef(null);
+  const earHistory = useRef([]);
+  const counters = useRef({ close: 0, yawn: 0, normal: 0, perclos: 0, state: 'awake', conf: 0 });
   const lastGood = useRef({ ear: 0.35, mar: 0.25, st: 'awake' });
+  const lastUI = useRef(0);
+  const lastSend = useRef(0);
+  const running = useRef(false);
 
-  useEffect(() => () => iv.current && clearInterval(iv.current), []);
-
-  const detect = useCallback(async () => {
-    const raw = wc.current?.getScreenshot();
-    if (!raw) return;
+  const initModel = useCallback(async () => {
     try {
-      let imgData = raw.split(',')[1];
-      if (imgData.length > 80000) {
-        const c = document.createElement('canvas');
-        c.width = 320; c.height = 240;
-        const ctx = c.getContext('2d');
-        const imgEl = new Image();
-        await new Promise(r => { imgEl.onload = r; imgEl.src = raw; });
-        ctx.drawImage(imgEl, 0, 0, 320, 240);
-        imgData = c.toDataURL('image/jpeg', 0.7).split(',')[1];
-      }
-      const res = await fetch(`${ML_API}/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imgData }),
+      const fileset = await FilesetResolver.forVisionTasks('/wasm');
+      const landmarker = await FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          modelAssetPath: '/face_landmarker.task',
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        outputFaceBlendshapes: false,
+        minFaceDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
       });
-      if (!res.ok) return;
-      const d = await res.json();
-      if (d.face_detected) {
-        setNoFace(false);
-        setEar(d.ear); setMar(d.mar);
-        setPerclos(d.perclos * 100); setConf(d.confidence * 100);
-        setSt(d.status); setCc(d.close_counter); setYc(d.yawn_counter);
-        lastGood.current = { ear: d.ear, mar: d.mar, st: d.status, cc: d.close_counter, yc: d.yawn_counter, conf: d.confidence, perclos: d.perclos };
-        driverAPI.sendDetection({
-          status: d.status,
-          confidence: d.confidence,
-          eyeAspectRatio: d.ear,
-          mouthAspectRatio: d.mar,
-          headPitch: d.pitch,
-          headYaw: d.yaw,
-          perclos: d.perclos,
-        }).catch(() => {});
-      } else {
-        setNoFace(true);
-        setErr('Face lost — stay in camera view');
+      model.current = landmarker;
+      setModelReady(true);
+    } catch (_) {
+      try {
+        const fileset = await FilesetResolver.forVisionTasks('/wasm');
+        const landmarker = await FaceLandmarker.createFromOptions(fileset, {
+          baseOptions: { modelAssetPath: '/face_landmarker.task', delegate: 'CPU' },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: false,
+        });
+        model.current = landmarker;
+        setModelReady(true);
+      } catch (e) {
+        setModelErr('AI model failed to load — check camera permissions');
       }
-    } catch { setErr('ML API unavailable'); }
+    }
   }, []);
+
+  useEffect(() => { initModel(); return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }; }, [initModel]);
+
+  const evaluate = useCallback((earValue, marValue) => {
+    const c = counters.current;
+    const h = earHistory.current;
+    h.push(earValue);
+    if (h.length > 300) h.splice(0, 100);
+    const windowEars = h.slice(-PERCLOS_WINDOW);
+    c.perclos = windowEars.filter(e => e < EAR_CLOSED).length / windowEars.length;
+
+    const eyesClosed = earValue < EAR_CLOSED;
+    const heavyLids = EAR_LOW > earValue && earValue >= EAR_CLOSED;
+    const halfMouth = marValue > MAR_HALF;
+    const mouthOpen = marValue > MAR_THRESHOLD;
+    const yawnCombo = halfMouth && heavyLids;
+
+    if (eyesClosed) {
+      c.close += 1; c.yawn = 0; c.normal = 0;
+    } else if (mouthOpen || yawnCombo) {
+      c.yawn += 1; c.normal = 0;
+    } else if (heavyLids) {
+      c.yawn = 0; c.normal = 0;
+    } else {
+      c.normal += 1;
+      if (c.normal >= FRAMES_RESET) { c.close = 0; c.yawn = 0; }
+    }
+
+    let state = 'awake';
+    let confV = 0;
+
+    if (c.close >= FRAMES_CRITICAL || c.perclos > 0.50) {
+      state = 'critical'; confV = Math.min(0.90 + c.perclos * 0.1, 0.98);
+    } else if (c.close >= FRAMES_DROWSY && c.perclos > 0.30) {
+      state = 'high_risk'; confV = Math.min(0.80 + c.perclos * 0.2, 0.95);
+    } else if (c.close >= FRAMES_DROWSY) {
+      state = 'drowsy'; confV = Math.min(0.70 + c.close / 300 + c.perclos, 0.92);
+    } else if (c.close >= FRAMES_MICRO) {
+      state = 'microsleep'; confV = Math.min(0.45 + c.close / 200, 0.75);
+    } else if (c.yawn >= FRAMES_YAWN) {
+      state = 'yawning'; confV = Math.min(0.40 + c.yawn / 180 + 0.2, 0.85);
+    } else if (eyesClosed && c.close >= FRAMES_CLOSED) {
+      state = 'eyes_closed'; confV = Math.min(0.20 + c.close / 300, 0.40);
+    } else if (heavyLids) {
+      state = 'heavy_eyelids'; confV = Math.min(0.10 + (EAR_LOW - earValue) * 2.5, 0.20);
+    } else if (mouthOpen) {
+      state = 'mouth_open'; confV = Math.min(0.10 + (marValue - MAR_THRESHOLD) * 1.0, 0.40);
+    }
+
+    c.state = state;
+    c.conf = confV;
+    return state;
+  }, []);
+
+  const loop = useCallback(async (ts) => {
+    if (!running.current) return;
+    const video = wc.current?.video;
+    if (video && video.readyState >= 2 && model.current) {
+      try {
+        const res = model.current.detectForVideo(video, ts);
+        if (res.faceLandmarks && res.faceLandmarks.length > 0) {
+          const lms = res.faceLandmarks[0];
+          const earVal = (aspect(LEFT_EYE, lms) + aspect(RIGHT_EYE, lms)) / 2;
+          const upper = MAR_UPPER.map(i => lms[i]);
+          const lower = MAR_LOWER.map(i => lms[i]);
+          const a = dist(upper[0], lower[1]);
+          const b = dist(upper[1], lower[0]);
+          const cC = dist(lms[MAR_L_CORNER], lms[MAR_R_CORNER]) || 1e-6;
+          const marVal = (a + b) / (2 * cC);
+          const state = evaluate(earVal, marVal);
+          lastGood.current = { ear: earVal, mar: marVal, st: state, conf: counters.current.conf, perclos: counters.current.perclos, cc: counters.current.close, yc: counters.current.yawn };
+          setNoFace(false);
+
+          const now = performance.now();
+          if (now - lastUI.current >= UI_SYNC_MS) {
+            lastUI.current = now;
+            setEar(earVal); setMar(marVal);
+            setPerclos(counters.current.perclos * 100);
+            setConf(counters.current.conf * 100);
+            setSt(state); setCc(counters.current.close); setYc(counters.current.yawn);
+          }
+          if (now - lastSend.current >= SEND_MS) {
+            lastSend.current = now;
+            driverAPI.sendDetection({
+              status: state,
+              confidence: counters.current.conf,
+              eyeAspectRatio: earVal,
+              mouthAspectRatio: marVal,
+              headPitch: 0,
+              headYaw: 0,
+              perclos: counters.current.perclos,
+            }).catch(() => {});
+          }
+        } else {
+          setNoFace(true);
+        }
+      } catch (_) {}
+    }
+    rafRef.current = requestAnimationFrame(loop);
+  }, [evaluate]);
 
   const start = async () => {
     try {
       await driverAPI.startSession();
       setSe(true); setOn(true); setNoFace(false);
-      setTimeout(detect, 100);
-      iv.current = setInterval(detect, CAPTURE_INTERVAL);
+      counters.current = { close: 0, yawn: 0, normal: 0, perclos: 0, state: 'awake', conf: 0 };
+      earHistory.current = [];
+      running.current = true;
+      rafRef.current = requestAnimationFrame(loop);
     } catch (_) {}
   };
 
   const stop = async () => {
-    if (iv.current) { clearInterval(iv.current); iv.current = null; }
-    setOn(false); setNoFace(false); setErr(''); setBox(null);
+    running.current = false;
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    setOn(false); setNoFace(false); setErr('');
     try { await driverAPI.endSession(); } catch (_) {}
   };
 
@@ -176,7 +303,7 @@ export default function VideoFeed({ onStatusChange }) {
   const isAlert = ['drowsy', 'high_risk', 'critical', 'microsleep'].includes(displaySt);
   const ec = displayEar >= EAR_LOW ? LV[0] : displayEar >= EAR_CLOSED ? LV[2] : LV[4];
   const mouthHalf = displayMar >= MAR_HALF && displayEar < EAR_LOW;
-  const mc = displayMar >= MAR_YAWN ? LV[2] : mouthHalf ? LV[1] : LV[0];
+  const mc = displayMar >= MAR_THRESHOLD ? LV[2] : mouthHalf ? LV[1] : LV[0];
 
   return (
     <div className="vf-root" style={{
@@ -185,8 +312,25 @@ export default function VideoFeed({ onStatusChange }) {
     }}>
       <div className="vf-video" style={{ position: 'relative', background: '#0f172a', aspectRatio: '4/3', overflow: 'hidden' }}>
         <Webcam ref={wc} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          screenshotFormat="image/jpeg" mirrored videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
-        {!on && (
+          mirrored videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
+
+        {!modelReady && !modelErr && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 4, background: 'rgba(2,6,23,0.8)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: 34, height: 34, margin: '0 auto 12px', borderRadius: '50%',
+                border: '3px solid rgba(59,130,246,0.2)', borderTopColor: '#3b82f6',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+              <p style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>Loading AI model…</p>
+            </div>
+          </div>
+        )}
+
+        {!on && modelReady && (
           <div style={{
             position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.75)', zIndex: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -351,11 +495,12 @@ export default function VideoFeed({ onStatusChange }) {
         <div style={{ fontSize: 10, color: LV[2], textAlign: 'center', padding: '4px 10px' }}>{err}</div>
       )}
 
-      <button onClick={on ? stop : start} style={{
+      <button onClick={on ? stop : start} disabled={!modelReady && !modelErr} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         padding: 10, margin: 10, borderRadius: 8,
         border: '1.5px solid', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         width: 'calc(100% - 20px)',
+        opacity: !modelReady && !modelErr ? 0.5 : 1,
         background: on ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
         color: on ? '#fca5a5' : '#86efac',
         borderColor: on ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
@@ -366,6 +511,7 @@ export default function VideoFeed({ onStatusChange }) {
       <style>{`
         @keyframes pulse {50%{opacity:0.4}}
         @keyframes af {0%,100%{opacity:1} 50%{opacity:0.65}}
+        @keyframes spin {to{transform:rotate(360deg)}}
       `}</style>
     </div>
   );
