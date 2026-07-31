@@ -5,6 +5,8 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe import Image, ImageFormat
 
+from model import EAR_THRESHOLD
+
 class FeatureExtractor:
     def __init__(self):
         model_path = self._get_model_path()
@@ -101,7 +103,7 @@ class FeatureExtractor:
             ear_history.append(ear)
             if len(ear_history) >= 10:
                 window = ear_history[-min(len(ear_history), 90):]
-                closed = sum(1 for e in window if e < 0.25)
+                closed = sum(1 for e in window if e < EAR_THRESHOLD)
                 perclos = closed / len(window)
 
         xs = [lm.x * w for lm in landmarks]

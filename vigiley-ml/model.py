@@ -5,18 +5,24 @@ VIGILEYE — Research-Backed Threshold Configuration
 
 Based on well-known published research:
 
-  PARAMETER       VALUE     SOURCE
-  ─────────────────────────────────────────────────────────────────────────
-  EAR_THRESHOLD   0.25      MediaPipe face landmarks report a small gap even
-                             when eyes are fully shut; 0.25 reliably catches
-                             closed eyes (Soukupova & Cech baseline 0.2
-                             tuned upward for MediaPipe landmark scale)
+   PARAMETER       VALUE     SOURCE
+   ─────────────────────────────────────────────────────────────────────────
+   EAR_THRESHOLD   0.28      MediaPipe face landmarks report a small gap even
+                              when eyes are fully shut; 0.28 catches closed
+                              eyes reliably (Soukupova & Cech baseline 0.2
+                              tuned upward for MediaPipe landmark scale)
 
-  EAR_LOW         0.30      Danisman et al. (2017) — drooping/heavy eyelid
-                             band sits just above the closed threshold
+   EAR_LOW         0.34      Danisman et al. (2017) — drooping/heavy eyelid
+                              band sits just above the closed threshold
 
-  MAR_THRESHOLD   0.50      Knoop et al. (2019) — mouth aspect ratio
-                             threshold for yawning; used in YawDD dataset
+   MAR_THRESHOLD   0.40      Knoop et al. (2019) — mouth aspect ratio
+                              threshold for yawning; tuned downward so a
+                              half-open mouth is enough
+
+   MAR_HALF        0.30      Secondary "mouth ajar" threshold — combined
+                              with heavy eyelids (EAR between 0.28 and 0.34)
+                              it counts as a yawn: half-eye-closed +
+                              half-mouth-open → yawning
 
    PERCLOS_RISK    0.30      Dinges et al. (1998) "PERCLOS: A Valid
                               Photometric Measure of Drowsiness" — the
@@ -61,9 +67,10 @@ Based on well-known published research:
 ================================================================================
 """
 
-EAR_THRESHOLD = 0.25
-EAR_LOW = 0.30
-MAR_THRESHOLD = 0.50
+EAR_THRESHOLD = 0.28
+EAR_LOW = 0.34
+MAR_THRESHOLD = 0.40
+MAR_HALF = 0.30
 PERCLOS_WINDOW = 180
 PERCLOS_RISK = 0.30
 
@@ -101,17 +108,19 @@ class DrowsinessDetector:
 
         eyes_closed = ear < EAR_THRESHOLD
         heavy_lids = EAR_LOW > ear >= EAR_THRESHOLD
+        half_mouth = mar > MAR_HALF
         mouth_open = mar > MAR_THRESHOLD
+        yawn_combo = half_mouth and heavy_lids
 
         if eyes_closed:
             self.close_counter += 1
             self.yawn_counter = 0
             self.normal_counter = 0
+        elif mouth_open or yawn_combo:
+            self.yawn_counter += 1
+            self.normal_counter = 0
         elif heavy_lids:
             self.yawn_counter = 0
-            self.normal_counter = 0
-        elif mouth_open:
-            self.yawn_counter += 1
             self.normal_counter = 0
         else:
             self.normal_counter += 1

@@ -5,7 +5,7 @@ import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from feature_extraction import FeatureExtractor
-from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, \
+from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, PERCLOS_WINDOW, \
     FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
 from websocket_client import AlertWebSocketClient
 
@@ -70,7 +70,7 @@ def predict():
 
         perclos = 0.0
         if ear_history:
-            window = ear_history[-min(len(ear_history), 60):]
+            window = ear_history[-min(len(ear_history), PERCLOS_WINDOW):]
             perclos = sum(1 for e in window if e < EAR_THRESHOLD) / len(window)
 
         result = {

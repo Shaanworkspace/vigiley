@@ -5,24 +5,25 @@ import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from '
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
 const CAPTURE_INTERVAL = 1000;
-const EAR_CLOSED = 0.25;
-const EAR_LOW = 0.30;
-const MAR_YAWN = 0.50;
+const EAR_CLOSED = 0.28;
+const EAR_LOW = 0.34;
+const MAR_YAWN = 0.40;
+const MAR_HALF = 0.30;
 
 const EAR_WARN = [
-  { min: 0.30, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
-  { min: 0.28, max: 0.30, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], lv: 1 },
-  { min: 0.25, max: 0.28, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], lv: 2 },
-  { min: 0.18, max: 0.25, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], lv: 3 },
-  { min: 0.12, max: 0.18, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], lv: 4 },
-  { min: -999, max: 0.12, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], lv: 5 },
+  { min: 0.34, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
+  { min: 0.31, max: 0.34, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], lv: 1 },
+  { min: 0.28, max: 0.31, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], lv: 2 },
+  { min: 0.22, max: 0.28, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], lv: 3 },
+  { min: 0.15, max: 0.22, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], lv: 4 },
+  { min: -999, max: 0.15, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], lv: 5 },
 ];
 
 const MAR_WARN = [
-  { min: 0.50, max: 0.55, msg: ['Mouth opening — are you yawning?', 'Close your mouth gently', 'Yawning starting — take a deep breath', 'Mouth slightly open — stay aware', 'Early yawn detected — rest soon'], lv: 1 },
-  { min: 0.55, max: 0.65, msg: ['Close your mouth! Yawning detected!', 'Yawning = fatigue! Take a break!', 'Excessive yawning — rest needed!', 'You are yawning — pull over soon!', 'Close your mouth and stretch!'], lv: 2 },
-  { min: 0.65, max: 99, msg: ['HEAVY YAWNING! REST IMMEDIATELY!', 'Repeated yawning = drowsy! Take a break!', 'CRITICAL: Excessive yawning — stop driving!', 'DANGER: Yawning means fatigue! Rest now!', 'ALERT: Your body needs rest — pull over!'], lv: 3 },
-  { min: -999, max: 0.50, msg: ['Mouth closed — good', 'Normal mouth position', 'Lips sealed — correct'], lv: 0 },
+  { min: 0.30, max: 0.40, msg: ['Mouth opening — are you yawning?', 'Close your mouth gently', 'Yawning starting — take a deep breath', 'Mouth slightly open — stay aware', 'Early yawn detected — rest soon'], lv: 1 },
+  { min: 0.40, max: 0.55, msg: ['Close your mouth! Yawning detected!', 'Yawning = fatigue! Take a break!', 'Excessive yawning — rest needed!', 'You are yawning — pull over soon!', 'Close your mouth and stretch!'], lv: 2 },
+  { min: 0.55, max: 99, msg: ['HEAVY YAWNING! REST IMMEDIATELY!', 'Repeated yawning = drowsy! Take a break!', 'CRITICAL: Excessive yawning — stop driving!', 'DANGER: Yawning means fatigue! Rest now!', 'ALERT: Your body needs rest — pull over!'], lv: 3 },
+  { min: -999, max: 0.30, msg: ['Mouth closed — good', 'Normal mouth position', 'Lips sealed — correct'], lv: 0 },
 ];
 
 const PERCLOS_WARN = [
@@ -174,7 +175,8 @@ export default function VideoFeed({ onStatusChange }) {
 
   const isAlert = ['drowsy', 'high_risk', 'critical', 'microsleep'].includes(displaySt);
   const ec = displayEar >= EAR_LOW ? LV[0] : displayEar >= EAR_CLOSED ? LV[2] : LV[4];
-  const mc = displayMar >= MAR_YAWN ? LV[2] : LV[0];
+  const mouthHalf = displayMar >= MAR_HALF && displayEar < EAR_LOW;
+  const mc = displayMar >= MAR_YAWN ? LV[2] : mouthHalf ? LV[1] : LV[0];
 
   return (
     <div className="vf-root" style={{
