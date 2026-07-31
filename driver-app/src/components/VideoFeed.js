@@ -10,27 +10,27 @@ const EAR_LOW = 0.25;
 const MAR_YAWN = 0.50;
 
 const EAR_WARN = [
-  { min: 0.25, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], icon: '✓', lv: 0 },
-  { min: 0.23, max: 0.25, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], icon: '⚠', lv: 1 },
-  { min: 0.20, max: 0.23, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], icon: '⚡', lv: 2 },
-  { min: 0.15, max: 0.20, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], icon: '‼', lv: 3 },
-  { min: 0.10, max: 0.15, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], icon: '🚨', lv: 4 },
-  { min: -999, max: 0.10, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], icon: '🚨', lv: 5 },
+  { min: 0.25, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
+  { min: 0.23, max: 0.25, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], lv: 1 },
+  { min: 0.20, max: 0.23, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], lv: 2 },
+  { min: 0.15, max: 0.20, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], lv: 3 },
+  { min: 0.10, max: 0.15, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], lv: 4 },
+  { min: -999, max: 0.10, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], lv: 5 },
 ];
 
 const MAR_WARN = [
-  { min: 0.50, max: 0.55, msg: ['Mouth opening — are you yawning?', 'Close your mouth gently', 'Yawning starting — take a deep breath', 'Mouth slightly open — stay aware', 'Early yawn detected — rest soon'], icon: '⚠', lv: 1 },
-  { min: 0.55, max: 0.65, msg: ['Close your mouth! Yawning detected!', 'Yawning = fatigue! Take a break!', 'Excessive yawning — rest needed!', 'You are yawning — pull over soon!', 'Close your mouth and stretch!'], icon: '⚡', lv: 2 },
-  { min: 0.65, max: 99, msg: ['HEAVY YAWNING! REST IMMEDIATELY!', 'Repeated yawning = drowsy! Take a break!', 'CRITICAL: Excessive yawning — stop driving!', 'DANGER: Yawning means fatigue! Rest now!', 'ALERT: Your body needs rest — pull over!'], icon: '‼', lv: 3 },
-  { min: -999, max: 0.50, msg: ['Mouth closed — good', 'Normal mouth position', 'Lips sealed — correct'], icon: '✓', lv: 0 },
+  { min: 0.50, max: 0.55, msg: ['Mouth opening — are you yawning?', 'Close your mouth gently', 'Yawning starting — take a deep breath', 'Mouth slightly open — stay aware', 'Early yawn detected — rest soon'], lv: 1 },
+  { min: 0.55, max: 0.65, msg: ['Close your mouth! Yawning detected!', 'Yawning = fatigue! Take a break!', 'Excessive yawning — rest needed!', 'You are yawning — pull over soon!', 'Close your mouth and stretch!'], lv: 2 },
+  { min: 0.65, max: 99, msg: ['HEAVY YAWNING! REST IMMEDIATELY!', 'Repeated yawning = drowsy! Take a break!', 'CRITICAL: Excessive yawning — stop driving!', 'DANGER: Yawning means fatigue! Rest now!', 'ALERT: Your body needs rest — pull over!'], lv: 3 },
+  { min: -999, max: 0.50, msg: ['Mouth closed — good', 'Normal mouth position', 'Lips sealed — correct'], lv: 0 },
 ];
 
 const PERCLOS_WARN = [
-  { min: 0, max: 10, msg: ['Eyes staying open — good', 'Normal eye closure rate', 'Blink rate healthy'], icon: '✓', lv: 0 },
-  { min: 10, max: 20, msg: ['Eyes closing frequently — stay alert!', 'Blinking more than usual — focus!', 'Eye closure increasing — wake up!', 'Frequent blinks = early fatigue', 'Your eyes are closing too often!'], icon: '⚠', lv: 1 },
-  { min: 20, max: 30, msg: ['HIGH eye closure rate! Wake up!', 'Eyes closed 20%+ of the time!', 'Drowsiness building — take action!', 'Warning: You are checking out!', 'Eye closure elevated — dangerous!'], icon: '⚡', lv: 2 },
-  { min: 30, max: 50, msg: ['CRITICAL: Eyes closed 30%+ — PULL OVER!', 'DANGER: Extreme eye closure! Stop now!', 'EMERGENCY: You are not watching the road!', 'PERCLOS critical — immediate rest required!', 'ALERT: 30%+ eye closure = microsleep risk!'], icon: '‼', lv: 3 },
-  { min: 50, max: 999, msg: ['CRITICAL: Half your eyes are closed! PULL OVER!', 'EMERGENCY: SYSTEM ALERT! Stop NOW!', 'DANGER: You are asleep at the wheel!', 'IMMEDIATE ACTION — STOP DRIVING!', 'LIFE SAFETY: Eyes closed 50%+!'], icon: '🚨', lv: 4 },
+  { min: 0, max: 10, msg: ['Eyes staying open — good', 'Normal eye closure rate', 'Blink rate healthy'], lv: 0 },
+  { min: 10, max: 20, msg: ['Eyes closing frequently — stay alert!', 'Blinking more than usual — focus!', 'Eye closure increasing — wake up!', 'Frequent blinks = early fatigue', 'Your eyes are closing too often!'], lv: 1 },
+  { min: 20, max: 30, msg: ['HIGH eye closure rate! Wake up!', 'Eyes closed 20%+ of the time!', 'Drowsiness building — take action!', 'Warning: You are checking out!', 'Eye closure elevated — dangerous!'], lv: 2 },
+  { min: 30, max: 50, msg: ['CRITICAL: Eyes closed 30%+ — PULL OVER!', 'DANGER: Extreme eye closure! Stop now!', 'EMERGENCY: You are not watching the road!', 'PERCLOS critical — immediate rest required!', 'ALERT: 30%+ eye closure = microsleep risk!'], lv: 3 },
+  { min: 50, max: 999, msg: ['CRITICAL: Half your eyes are closed! PULL OVER!', 'EMERGENCY: SYSTEM ALERT! Stop NOW!', 'DANGER: You are asleep at the wheel!', 'IMMEDIATE ACTION — STOP DRIVING!', 'LIFE SAFETY: Eyes closed 50%+!'], lv: 4 },
 ];
 
 const STATE_WARN = {
