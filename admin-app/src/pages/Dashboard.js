@@ -506,9 +506,9 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {[
                     { email: 'admin@example.com', pwd: 'admin123', role: 'Admin', color: '#8b5cf6' },
-                    { email: 'driver1@example.com', pwd: 'driver123', role: 'Driver 1', color: '#3b82f6' },
-                    { email: 'driver2@example.com', pwd: 'driver123', role: 'Driver 2', color: '#8b5cf6' },
-                    { email: 'driver3@example.com', pwd: 'driver123', role: 'Driver 3', color: '#f59e0b' },
+                    { email: 'utkarsh@example.com', pwd: 'driver123', role: 'Utkarsh', color: '#3b82f6' },
+                    { email: 'shreya@example.com', pwd: 'driver123', role: 'Shreya', color: '#ec4899' },
+                    { email: 'shaan@example.com', pwd: 'driver123', role: 'Shaan', color: '#f59e0b' },
                   ].map((c, i) => (
                     <div key={i} style={{
                       display: 'flex', alignItems: 'center', gap: 8,

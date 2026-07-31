@@ -24,9 +24,9 @@ const seed = async () => {
     }
 
     const drivers = [
-      { name: 'Rajesh Kumar', email: 'driver1@example.com', password: 'driver123', phone: '+91 9876543210', licenseNumber: 'DL-2024-001', vehicleNumber: 'UP 32 AB 1234' },
-      { name: 'Amit Singh', email: 'driver2@example.com', password: 'driver123', phone: '+91 8765432109', licenseNumber: 'DL-2024-002', vehicleNumber: 'HR 26 CD 5678' },
-      { name: 'Suresh Patel', email: 'driver3@example.com', password: 'driver123', phone: '+91 7654321098', licenseNumber: 'DL-2024-003', vehicleNumber: 'GJ 01 EF 9012' },
+      { name: 'Utkarsh Sharma', email: 'utkarsh@example.com', password: 'driver123', phone: '+91 9123456701', licenseNumber: 'DL-2024-004', vehicleNumber: 'DL 01 CX 1234' },
+      { name: 'Shreya Verma', email: 'shreya@example.com', password: 'driver123', phone: '+91 9123456702', licenseNumber: 'DL-2024-005', vehicleNumber: 'DL 02 CX 5678' },
+      { name: 'Shaan Mehta', email: 'shaan@example.com', password: 'driver123', phone: '+91 9123456703', licenseNumber: 'DL-2024-006', vehicleNumber: 'DL 03 CX 9012' },
     ];
 
     for (const d of drivers) {
