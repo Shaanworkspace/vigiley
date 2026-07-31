@@ -8,7 +8,7 @@ const SV = { critical: { bg: 'rgba(239,68,68,0.1)', dot: '#ef4444' }, high: { bg
 const COUNTDOWN_SECONDS = 5;
 const ACCEPT_SECONDS = 5;
 
-export default function AlertPanel() {
+export default function AlertPanel({ liveStatus }) {
   const [alerts, setAlerts] = useState([]);
   const [flash, setFlash] = useState(null);
   const [phase, setPhase] = useState(null);
@@ -48,6 +48,29 @@ export default function AlertPanel() {
   const stopTimer = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   };
+
+  const cancelIfRecovered = (status) => {
+    if (!flashRef.current) return;
+    if (phaseRef.current !== 'countdown') return;
+    if (!status) return;
+    const recovered = ['awake', 'heavy_eyelids', 'mouth_open'].includes(status);
+    if (recovered) {
+      const a = flashRef.current;
+      stopTimer();
+      stopAlarm();
+      ack(a._id);
+      flashRef.current = null;
+      setFlash(null);
+      setPhase(null);
+      setRemaining(0);
+      if (queue.current.length > 0) showNext();
+    }
+  };
+
+  useEffect(() => {
+    cancelIfRecovered(liveStatus);
+    // eslint-disable-next-line
+  }, [liveStatus]);
 
   const showNext = () => {
     const next = queue.current.shift();

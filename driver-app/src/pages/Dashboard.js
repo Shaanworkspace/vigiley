@@ -46,6 +46,7 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 
 export default function Dashboard() {
   const [data, setData] = useState({ todayLogs: 0, todayDrowsyEvents: 0, recentAlerts: [], activeSession: null, hourlyBreakdown: [] });
+  const [liveStatus, setLiveStatus] = useState('awake');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { load(); const i = setInterval(load, 8000); return () => clearInterval(i); }, []);
@@ -106,7 +107,7 @@ export default function Dashboard() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <VideoFeed />
+                  <VideoFeed onStatusChange={setLiveStatus} />
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
                     {data.hourlyBreakdown?.slice(0, 3).map((h, i) => (
@@ -122,7 +123,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <AlertPanel />
+                <AlertPanel liveStatus={liveStatus} />
               </div>
             </>
           )}

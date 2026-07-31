@@ -82,7 +82,7 @@ function WarningBar({ label, value, warns }) {
   );
 }
 
-export default function VideoFeed() {
+export default function VideoFeed({ onStatusChange }) {
   const wc = useRef(null);
   const iv = useRef(null);
   const [on, setOn] = useState(false);
@@ -167,6 +167,10 @@ export default function VideoFeed() {
   const displayCc = noFace ? (lastGood.current.cc || 0) : cc;
   const displayYc = noFace ? (lastGood.current.yc || 0) : yc;
   const displayConf = noFace ? ((lastGood.current.conf || 0) * 100) : conf;
+
+  useEffect(() => {
+    if (onStatusChange) onStatusChange(on && !noFace ? st : null);
+  }, [st, noFace, on, onStatusChange]);
 
   const isAlert = ['drowsy', 'high_risk', 'critical', 'microsleep'].includes(displaySt);
   const ec = displayEar >= EAR_LOW ? LV[0] : displayEar >= EAR_CLOSED ? LV[2] : LV[4];
