@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, Phone, FileText, Truck } from 'lucide-react';
+import { User, Mail, Lock, Phone, FileText, Truck, CreditCard } from 'lucide-react';
 
 export default function Register() {
-  const [form, setForm] = useState({name:'',email:'',password:'',phone:'',licenseNumber:'',vehicleNumber:''});
+  const [form, setForm] = useState({name:'',email:'',password:'',phone:'',aadharNumber:'',licenseNumber:'',vehicleNumber:''});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register, user } = useAuth();
@@ -25,6 +25,7 @@ export default function Register() {
     {n:'email',l:'Email',Icon:Mail,p:'driver@example.com'},
     {n:'password',l:'Password',Icon:Lock,p:'Min 6 characters',t:'password'},
     {n:'phone',l:'Phone',Icon:Phone,p:'+91 9876543210'},
+    {n:'aadharNumber',l:'Aadhaar Number',Icon:CreditCard,p:'12-digit Aadhaar number'},
     {n:'licenseNumber',l:'License Number',Icon:FileText,p:'DL-2024-001'},
     {n:'vehicleNumber',l:'Vehicle Number',Icon:Truck,p:'UP 32 AB 1234'},
   ];
@@ -51,7 +52,7 @@ export default function Register() {
               <label style={s.lbl}>{f.l}</label>
               <div style={s.wrap}>
                 <I size={15} color="#64748b" style={{position:'absolute',left:11,pointerEvents:'none'}}/>
-                <input style={s.inp} type={f.t||'text'} name={f.n} value={form[f.n]} onChange={h} placeholder={f.p} required={['name','email','password'].includes(f.n)}/>
+                <input style={s.inp} type={f.t||'text'} name={f.n} value={form[f.n]} onChange={h} placeholder={f.p} required={['name','email','password','aadharNumber','licenseNumber'].includes(f.n)}/>
               </div>
             </div>
           })}

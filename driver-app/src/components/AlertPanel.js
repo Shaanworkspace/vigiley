@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { alertAPI } from '../services/api';
 import { useSocket } from '../context/SocketContext';
-import { Bell, CheckCircle, Clock, AlertTriangle, ShieldCheck, Siren } from 'lucide-react';
+import { Bell, CheckCircle, Clock, AlertTriangle, ShieldCheck, Siren, Volume2 } from 'lucide-react';
+import { startAlarm, stopAlarm } from '../utils/alarm';
 
 const SV = { critical: { bg: 'rgba(239,68,68,0.1)', dot: '#ef4444' }, high: { bg: 'rgba(234,88,12,0.1)', dot: '#ea580c' }, medium: { bg: 'rgba(245,158,11,0.1)', dot: '#f59e0b' }, low: { bg: 'rgba(59,130,246,0.08)', dot: '#3b82f6' } };
 const COUNTDOWN_SECONDS = 5;
@@ -20,7 +21,7 @@ export default function AlertPanel() {
   const timerRef = useRef(null);
   const seenIds = useRef(new Set());
 
-  useEffect(() => { load(); return () => { if (timerRef.current) clearInterval(timerRef.current); }; }, []);
+  useEffect(() => { load(); return () => { if (timerRef.current) clearInterval(timerRef.current); stopAlarm(); }; }, []);
 
   useEffect(() => {
     if (warnings.length > prevWarnLen.current) {
@@ -73,7 +74,11 @@ export default function AlertPanel() {
           setPhase('accept');
           startPhase();
         } else {
-          handleEscalate(flashRef.current);
+          startAlarm();
+          phaseRef.current = 'alarm';
+          setPhase('alarm');
+          alertAPI.escalateAlert(flashRef.current._id).catch(() => { });
+          load();
         }
       }
     }, 100);
@@ -81,17 +86,13 @@ export default function AlertPanel() {
 
   const handleAccept = (a) => {
     stopTimer();
+    stopAlarm();
     ack(a._id);
     dismiss();
   };
 
-  const handleEscalate = (a) => {
-    alertAPI.escalateAlert(a._id).catch(() => { });
-    load();
-    dismiss();
-  };
-
   const dismiss = () => {
+    stopAlarm();
     flashRef.current = null;
     setFlash(null);
     setPhase(null);
@@ -228,6 +229,45 @@ export default function AlertPanel() {
                 }} />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {flash && phase === 'alarm' && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          background: 'linear-gradient(135deg, rgba(127,29,29,0.95), rgba(2,6,23,0.98))',
+          backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{ textAlign: 'center', maxWidth: 480 }}>
+            <div style={{
+              width: 110, height: 110, margin: '0 auto 22px', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(239,68,68,0.25)',
+              border: '2px solid rgba(248,113,113,0.6)',
+              animation: 'fp 0.7s ease-in-out infinite',
+            }}>
+              <Volume2 size={52} color="#f87171" />
+            </div>
+            <div style={{
+              fontSize: 46, fontWeight: 900, color: '#fecaca', lineHeight: 1.1,
+              letterSpacing: '2px', textTransform: 'uppercase',
+              textShadow: '0 0 40px rgba(248,113,113,0.8)',
+              animation: 'fp 0.7s ease-in-out infinite',
+              marginBottom: 10,
+            }}>ALERT!</div>
+            <div style={{ fontSize: 15, color: '#fca5a5', marginBottom: 26, fontWeight: 600 }}>
+              Not accepted — alert sent to admin. Press Accept to stop the alarm.
+            </div>
+            <button onClick={() => handleAccept(flash)} style={{
+              width: '100%', padding: '18px 0', borderRadius: 14, border: 'none',
+              background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff',
+              fontSize: 20, fontWeight: 800, cursor: 'pointer', letterSpacing: '1px',
+              boxShadow: '0 10px 40px rgba(239,68,68,0.5)',
+              animation: 'fp 0.7s ease-in-out infinite',
+            }}>ACCEPT</button>
+            <div style={{ marginTop: 14, fontSize: 12, color: '#7f1d1d' }}>{flash.type?.replace(/_/g, ' ')} — {flash.message}</div>
           </div>
         </div>
       )}

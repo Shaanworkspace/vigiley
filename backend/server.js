@@ -91,9 +91,9 @@ app.post('/api/setup', async (req, res) => {
       await User.create({ name: 'Admin User', email: 'admin@example.com', password: 'admin123', role: 'admin', phone: '+91 9999999999' });
     }
     const drivers = [
-      { name: 'Utkarsh Sharma', email: 'utkarsh@example.com', password: 'driver123', phone: '+91 9123456701', licenseNumber: 'DL-2024-004', vehicleNumber: 'DL 01 CX 1234' },
-      { name: 'Shreya Verma', email: 'shreya@example.com', password: 'driver123', phone: '+91 9123456702', licenseNumber: 'DL-2024-005', vehicleNumber: 'DL 02 CX 5678' },
-      { name: 'Shaan Mehta', email: 'shaan@example.com', password: 'driver123', phone: '+91 9123456703', licenseNumber: 'DL-2024-006', vehicleNumber: 'DL 03 CX 9012' },
+      { name: 'Utkarsh Sharma', email: 'utkarsh@example.com', password: 'driver123', phone: '+91 9123456701', aadharNumber: '1234-5678-9012', licenseNumber: 'DL-2024-004', vehicleNumber: 'DL 01 CX 1234' },
+      { name: 'Shreya Verma', email: 'shreya@example.com', password: 'driver123', phone: '+91 9123456702', aadharNumber: '2345-6789-0123', licenseNumber: 'DL-2024-005', vehicleNumber: 'DL 02 CX 5678' },
+      { name: 'Shaan Mehta', email: 'shaan@example.com', password: 'driver123', phone: '+91 9123456703', aadharNumber: '3456-7890-1234', licenseNumber: 'DL-2024-006', vehicleNumber: 'DL 03 CX 9012' },
     ];
     const created = [];
     for (const d of drivers) {

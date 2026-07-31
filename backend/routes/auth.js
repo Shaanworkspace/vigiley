@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, phone, licenseNumber, vehicleNumber } = req.body;
+    const { name, email, password, role, phone, aadharNumber, licenseNumber, vehicleNumber } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -19,6 +19,7 @@ router.post('/register', async (req, res) => {
       password,
       role: role || 'driver',
       phone,
+      aadharNumber,
       licenseNumber,
       vehicleNumber,
     });

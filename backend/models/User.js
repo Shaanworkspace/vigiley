@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { type: String, enum: ['driver', 'admin'], default: 'driver' },
     phone: { type: String, trim: true },
+    aadharNumber: { type: String, trim: true },
     licenseNumber: { type: String, trim: true },
     vehicleNumber: { type: String, trim: true },
     isActive: { type: Boolean, default: true },

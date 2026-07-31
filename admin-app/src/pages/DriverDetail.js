@@ -89,6 +89,7 @@ export default function DriverDetail() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Phone size={12} />{dr.phone || '—'}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Truck size={12} />{dr.vehicleNumber || '—'}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><IdCard size={12} />{dr.licenseNumber || '—'}</span>
+                {dr.aadharNumber && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><IdCard size={12} />Aadhaar: {dr.aadharNumber}</span>}
               </div>
               <div style={{ fontSize: 11, color: '#475569', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Calendar size={10} />Registered {new Date(dr.createdAt || Date.now()).toLocaleDateString()}
