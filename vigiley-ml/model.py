@@ -7,12 +7,13 @@ Based on well-known published research:
 
   PARAMETER       VALUE     SOURCE
   ─────────────────────────────────────────────────────────────────────────
-  EAR_THRESHOLD   0.20      Soukupova & Cech (2016) "Real-Time Eye
-                             Blink Detection using Facial Landmarks"
-                             — original EAR paper, threshold 0.2
+  EAR_THRESHOLD   0.25      MediaPipe face landmarks report a small gap even
+                             when eyes are fully shut; 0.25 reliably catches
+                             closed eyes (Soukupova & Cech baseline 0.2
+                             tuned upward for MediaPipe landmark scale)
 
-  EAR_LOW         0.25      Danisman et al. (2017) "Drowsy Driver
-                             Detection System using Eye Aspect Ratio"
+  EAR_LOW         0.30      Danisman et al. (2017) — drooping/heavy eyelid
+                             band sits just above the closed threshold
 
   MAR_THRESHOLD   0.50      Knoop et al. (2019) — mouth aspect ratio
                              threshold for yawning; used in YawDD dataset
@@ -60,8 +61,8 @@ Based on well-known published research:
 ================================================================================
 """
 
-EAR_THRESHOLD = 0.20
-EAR_LOW = 0.25
+EAR_THRESHOLD = 0.25
+EAR_LOW = 0.30
 MAR_THRESHOLD = 0.50
 PERCLOS_WINDOW = 180
 PERCLOS_RISK = 0.30

@@ -49,8 +49,8 @@ export default function Alerts() {
       }} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Navbar />
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div className="adm-container">
+          <div className="adm-hwrap">
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
                 Alert Center
@@ -62,7 +62,7 @@ export default function Alerts() {
               </h1>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Real-time drowsiness alerts from all drivers</p>
             </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <Filter size={13} color="#475569" />
               {SRV.map(f => (
                 <button key={f} style={{

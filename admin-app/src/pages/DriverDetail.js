@@ -48,7 +48,7 @@ export default function DriverDetail() {
       }} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Navbar />
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
+        <div className="adm-container">
           <button style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8,
             border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)',
@@ -58,7 +58,7 @@ export default function DriverDetail() {
           </button>
 
           {/* Driver Profile Header */}
-          <div style={{
+          <div className="adm-profile-head" style={{
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
             borderRadius: 14, padding: 24, display: 'flex', alignItems: 'center', gap: 20,
             marginBottom: 20, backdropFilter: 'blur(4px)',
@@ -95,7 +95,7 @@ export default function DriverDetail() {
               </div>
             </div>
             {sess && (
-              <div style={{
+              <div className="adm-profile-sds" style={{
                 textAlign: 'center', padding: '12px 24px',
                 background: 'rgba(255,255,255,0.03)', borderRadius: 12,
                 border: '1px solid rgba(255,255,255,0.06)',
@@ -126,7 +126,7 @@ export default function DriverDetail() {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+              <div className="adm-grid-4" style={{ marginBottom: 20 }}>
                 <StatCard label="Normal" value={sc.normal || 0} color="#22c55e" icon={Activity} />
                 <StatCard label="Yawning" value={sc.yawning || 0} color="#f59e0b" />
                 <StatCard label="Eyes Closed" value={sc.eyes_closed || 0} color="#ef4444" />
@@ -134,7 +134,7 @@ export default function DriverDetail() {
               </div>
 
               {sess && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+                <div className="adm-grid-3" style={{ marginBottom: 20 }}>
                   <div style={{
                     background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
                     borderRadius: 14, padding: 20, backdropFilter: 'blur(4px)',
@@ -287,9 +287,9 @@ export default function DriverDetail() {
                   <p>No session history</p>
                 </div>
               ) : (
-                <div style={{ fontSize: 12 }}>
-                  <div style={{
-                    display: 'flex', gap: 16, padding: '10px 20px',
+                <div className="adm-scroll-x" style={{ fontSize: 12 }}>
+                  <div className="adm-table" style={{
+                    gap: 16, padding: '10px 20px',
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                     color: '#475569', fontWeight: 600, fontSize: 10, textTransform: 'uppercase',
                   }}>
@@ -300,8 +300,8 @@ export default function DriverDetail() {
                     <span style={{ flex: 0.6, textAlign: 'right' }}>Alerts</span>
                   </div>
                   {data.sessionHistory.slice(0, 20).map(s => (
-                    <div key={s._id} style={{
-                      display: 'flex', gap: 16, padding: '10px 20px',
+                    <div className="adm-table" key={s._id} style={{
+                      gap: 16, padding: '10px 20px',
                       borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
                       transition: 'background 0.15s',
                     }}>

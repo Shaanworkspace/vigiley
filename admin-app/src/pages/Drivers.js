@@ -34,13 +34,13 @@ export default function Drivers() {
       }} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Navbar />
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div className="adm-container">
+          <div className="adm-hwrap">
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 700 }}>Drivers</h1>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{drivers.length} registered • {drivers.filter(d => d.activeSession).length} active now</p>
             </div>
-            <div style={{ position: 'relative', maxWidth: 280, width: '100%' }}>
+            <div className="adm-search" style={{ position: 'relative', maxWidth: 280, width: '100%' }}>
               <Search size={15} color="#475569" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
               <input style={{
                 width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10,

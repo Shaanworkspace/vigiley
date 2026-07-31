@@ -17,7 +17,7 @@ export default function Reports() {
     <div style={{minHeight:'100vh',background:'#020617'}}>
       <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(245,158,11,0.08),transparent)',pointerEvents:'none',zIndex:0}}/>
       <div style={{position:'relative',zIndex:1}}><Navbar />
-      <div style={{maxWidth:1200,margin:'0 auto',padding:'20px 24px 40px'}}>
+      <div className="adm-container">
         <div style={{marginBottom:24}}><h1 style={{fontSize:22,fontWeight:700}}>Reports</h1><p style={{fontSize:13,color:'#64748b',marginTop:2}}>Driver drowsiness analytics</p></div>
         <div style={{display:'flex',gap:12,alignItems:'flex-end',marginBottom:24,flexWrap:'wrap'}}>
           <div style={{display:'flex',flexDirection:'column',gap:4}}><label style={{fontSize:11,fontWeight:600,color:'#64748b'}}>Start</label><input type="date" value={dates.startDate} onChange={e=>setDates({...dates,startDate:e.target.value})} style={{padding:'7px 12px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'#fff',fontSize:13}}/></div>
@@ -25,7 +25,7 @@ export default function Reports() {
           <button style={{padding:'7px 18px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}} onClick={load}>Apply</button>
         </div>
         {loading?<div style={{textAlign:'center',padding:60,color:'#64748b'}}>Loading…</div>:!report?<div style={{textAlign:'center',padding:60,color:'#64748b'}}>No data available</div>:<>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
+          <div className="adm-grid-2" style={{marginBottom:20}}>
             <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
               <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:14}}>Status Distribution</h3>
               <div style={{display:'flex',flexDirection:'column',gap:8}}>{(report.statusDistribution||[]).map(item=>{const total=report.statusDistribution.reduce((a,s)=>a+s.count,0);const pct=total>0?((item.count/total)*100).toFixed(1):0;
@@ -44,7 +44,7 @@ export default function Reports() {
               </div>)}</div>
             </div>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <div className="adm-grid-2">
             <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:14,padding:20,backdropFilter:'blur(4px)'}}>
               <h3 style={{fontSize:12,color:'#64748b',fontWeight:600,marginBottom:14}}>Alert Severity</h3>
               <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>{(report.alertsBySeverity||[]).map(s=><div key={s._id} style={{background:'rgba(255,255,255,0.03)',borderRadius:10,padding:'12px',textAlign:'center',border:'1px solid rgba(255,255,255,0.06)'}}>

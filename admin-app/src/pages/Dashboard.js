@@ -126,7 +126,7 @@ export default function Dashboard() {
       })()}
 
       {/* Toast Notifications */}
-      <div style={{ position: 'fixed', top: 80, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
+      <div className="adm-toasts">
         {toasts.map(t => {
           const sev = t.severity || 'medium';
           const initials = (t.driver?.name || 'DR').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -175,8 +175,8 @@ export default function Dashboard() {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         <Navbar />
-        <div style={{ maxWidth: 1360, margin: '0 auto', padding: '20px 24px 40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div className="adm-container">
+          <div className="adm-hwrap" style={{ marginBottom: 24 }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
                 Fleet Dashboard
@@ -196,7 +196,7 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+          <div className="adm-grid-4" style={{ marginBottom: 20 }}>
             {[
               { label: 'Total Drivers', value: stats?.totalDrivers || 0, color: '#3b82f6', icon: Users },
               { label: 'Active Now', value: stats?.activeSessions || 0, color: '#22c55e', icon: Activity },
@@ -212,11 +212,11 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+          <div className="adm-layout">
             {/* Left Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Alert Severity + Risk Levels + Hourly Trend */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div className="adm-grid-3">
                 {[
                   { t: 'Alert Severity', data: stats?.alertsBySeverity || [], render: (s) => (
                     <div key={s._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>

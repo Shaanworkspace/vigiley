@@ -18,7 +18,7 @@ export default function Navbar() {
   useEffect(() => { const o = () => setSc(window.scrollY > 10); window.addEventListener('scroll', o, { passive: true }); return () => window.removeEventListener('scroll', o); }, []);
 
   return (
-    <div style={{ position: 'sticky', top: 0, zIndex: 100, padding: '12px 20px 0' }}>
+    <div className="adm-navbar" style={{ position: 'sticky', top: 0, zIndex: 100, padding: '12px 20px 0' }}>
       <nav style={{
         maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '8px 16px', borderRadius: 16,
@@ -41,18 +41,18 @@ export default function Navbar() {
             const I = item.icon;
             const active = loc.pathname === item.path || loc.pathname.startsWith(item.path + '/');
             return (
-              <button key={item.path} onClick={() => navigate(item.path)} style={{
+              <button key={item.path} onClick={() => navigate(item.path)} title={item.label} style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8,
                 border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
                 background: active ? 'rgba(255,255,255,0.06)' : 'transparent', color: active ? '#fff' : '#64748b',
               }}>
                 <I size={15} />
-                <span>{item.label}</span>
+                <span className="adm-nav-labels">{item.label}</span>
               </button>
             );
           })}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="adm-nav-user" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{width:26,height:26,borderRadius:'50%',background:'rgba(139,92,246,0.2)',color:'#c4b5fd',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700}}>{user?.name?.charAt(0)||'A'}</div>
             <span style={{fontSize:12,fontWeight:600,color:'#cbd5e1'}}>{user?.name}</span>

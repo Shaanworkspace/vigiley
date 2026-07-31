@@ -5,17 +5,17 @@ import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from '
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
 const CAPTURE_INTERVAL = 1000;
-const EAR_CLOSED = 0.20;
-const EAR_LOW = 0.25;
+const EAR_CLOSED = 0.25;
+const EAR_LOW = 0.30;
 const MAR_YAWN = 0.50;
 
 const EAR_WARN = [
-  { min: 0.25, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
-  { min: 0.23, max: 0.25, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], lv: 1 },
-  { min: 0.20, max: 0.23, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], lv: 2 },
-  { min: 0.15, max: 0.20, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], lv: 3 },
-  { min: 0.10, max: 0.15, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], lv: 4 },
-  { min: -999, max: 0.10, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], lv: 5 },
+  { min: 0.30, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
+  { min: 0.28, max: 0.30, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], lv: 1 },
+  { min: 0.25, max: 0.28, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], lv: 2 },
+  { min: 0.18, max: 0.25, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], lv: 3 },
+  { min: 0.12, max: 0.18, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], lv: 4 },
+  { min: -999, max: 0.12, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], lv: 5 },
 ];
 
 const MAR_WARN = [

@@ -4,16 +4,19 @@ import { useSocket } from '../context/SocketContext';
 import { Bell, CheckCircle, Clock, AlertTriangle, ShieldCheck, Siren } from 'lucide-react';
 
 const SV = { critical: { bg: 'rgba(239,68,68,0.1)', dot: '#ef4444' }, high: { bg: 'rgba(234,88,12,0.1)', dot: '#ea580c' }, medium: { bg: 'rgba(245,158,11,0.1)', dot: '#f59e0b' }, low: { bg: 'rgba(59,130,246,0.08)', dot: '#3b82f6' } };
-const FLASH_SECONDS = 5;
+const COUNTDOWN_SECONDS = 5;
+const ACCEPT_SECONDS = 5;
 
 export default function AlertPanel() {
   const [alerts, setAlerts] = useState([]);
   const [flash, setFlash] = useState(null);
-  const [remaining, setRemaining] = useState(FLASH_SECONDS);
+  const [phase, setPhase] = useState(null);
+  const [remaining, setRemaining] = useState(0);
   const { warnings } = useSocket();
   const prevWarnLen = useRef(0);
   const queue = useRef([]);
   const flashRef = useRef(null);
+  const phaseRef = useRef(null);
   const timerRef = useRef(null);
   const seenIds = useRef(new Set());
 
@@ -41,26 +44,43 @@ export default function AlertPanel() {
     try { await alertAPI.acknowledgeAlert(id); load(); } catch (_) { }
   };
 
+  const stopTimer = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  };
+
   const showNext = () => {
     const next = queue.current.shift();
     if (!next) return;
     flashRef.current = next;
     setFlash(next);
-    setRemaining(FLASH_SECONDS);
+    phaseRef.current = 'countdown';
+    setPhase('countdown');
+    startPhase();
+  };
+
+  const startPhase = () => {
+    const dur = phaseRef.current === 'countdown' ? COUNTDOWN_SECONDS : ACCEPT_SECONDS;
+    setRemaining(dur);
     const start = Date.now();
+    stopTimer();
     timerRef.current = setInterval(() => {
-      const left = FLASH_SECONDS - (Date.now() - start) / 1000;
+      const left = dur - (Date.now() - start) / 1000;
       setRemaining(left > 0 ? left : 0);
       if (left <= 0) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-        handleEscalate(next);
+        stopTimer();
+        if (phaseRef.current === 'countdown') {
+          phaseRef.current = 'accept';
+          setPhase('accept');
+          startPhase();
+        } else {
+          handleEscalate(flashRef.current);
+        }
       }
     }, 100);
   };
 
   const handleAccept = (a) => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    stopTimer();
     ack(a._id);
     dismiss();
   };
@@ -74,10 +94,12 @@ export default function AlertPanel() {
   const dismiss = () => {
     flashRef.current = null;
     setFlash(null);
+    setPhase(null);
     if (queue.current.length > 0) showNext();
   };
 
   const p = alerts.filter(a => !a.isAcknowledged && !a.isEscalated);
+  const v = (flash?.severity && SV[flash.severity]) || SV.low;
 
   return (
     <div style={{ position: 'relative', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', minHeight: 400 }}>
@@ -88,18 +110,18 @@ export default function AlertPanel() {
       <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {alerts.length === 0 && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '40px 20px' }}><CheckCircle size={22} color="#334155" /><p style={{ fontSize: 13, color: '#475569' }}>All clear — no alerts</p></div>}
         {alerts.map(a => {
-          const v = SV[a.severity] || SV.low;
+          const av = SV[a.severity] || SV.low;
           return (
             <div key={a._id} style={{
               borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10,
-              background: a.isAcknowledged ? 'rgba(255,255,255,0.02)' : v.bg,
+              background: a.isAcknowledged ? 'rgba(255,255,255,0.02)' : av.bg,
               opacity: a.isAcknowledged ? 0.5 : 1, transition: 'opacity 0.2s',
             }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: v.dot, marginTop: 5, flexShrink: 0 }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: av.dot, marginTop: 5, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>{a.type.replace('_', ' ')}</span>
-                  <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: v.dot }}>{a.severity}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: av.dot }}>{a.severity}</span>
                   {a.isEscalated && <span style={{ fontSize: 9, fontWeight: 700, color: '#fb923c', background: 'rgba(251,146,60,0.12)', padding: '1px 6px', borderRadius: 8 }}>Escalated</span>}
                 </div>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6, lineHeight: 1.4 }}>{a.message}</p>
@@ -113,33 +135,60 @@ export default function AlertPanel() {
         })}
       </div>
 
-      {flash && (
+      {flash && phase === 'countdown' && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          background: 'rgba(2,6,23,0.8)', backdropFilter: 'blur(4px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{
+            fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', color: v.dot,
+            marginBottom: 18, animation: 'fp 0.8s ease-in-out infinite',
+          }}>Alert in {Math.ceil(remaining)}s</div>
+          <div style={{
+            fontSize: 96, fontWeight: 900, color: '#fff', lineHeight: 1,
+            textShadow: `0 0 40px ${v.dot}, 0 0 90px ${v.dot}55`,
+          }}>{Math.ceil(remaining)}</div>
+          <div style={{ fontSize: 14, color: '#94a3b8', marginTop: 16, textAlign: 'center' }}>
+            {flash.type?.replace(/_/g, ' ')} detected — open your eyes or accept the alert
+          </div>
+          <div style={{ marginTop: 24, width: 220, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', background: v.dot, borderRadius: 3,
+              width: `${(remaining / COUNTDOWN_SECONDS) * 100}%`,
+              transition: 'width 0.1s linear',
+            }} />
+          </div>
+        </div>
+      )}
+
+      {flash && phase === 'accept' && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(2,6,23,0.85)', backdropFilter: 'blur(6px)',
+          background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
         }}>
           <div style={{
             width: '100%', maxWidth: 440, borderRadius: 20,
-            background: '#0f172a', border: `1px solid ${(SV[flash.severity] || SV.low).dot}55`,
-            boxShadow: `0 30px 80px rgba(0,0,0,0.7), 0 0 60px ${(SV[flash.severity] || SV.low).dot}22`,
+            background: '#0f172a', border: `1px solid ${v.dot}55`,
+            boxShadow: `0 30px 80px rgba(0,0,0,0.7), 0 0 60px ${v.dot}22`,
             overflow: 'hidden',
           }}>
             <div style={{
               padding: '28px 28px 22px', textAlign: 'center',
-              background: `linear-gradient(180deg, ${(SV[flash.severity] || SV.low).dot}14, transparent)`,
+              background: `linear-gradient(180deg, ${v.dot}14, transparent)`,
             }}>
               <div style={{
                 width: 72, height: 72, margin: '0 auto 14px', borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: `${(SV[flash.severity] || SV.low).dot}1f`,
+                background: `${v.dot}1f`,
                 animation: 'fp 0.8s ease-in-out infinite',
               }}>
                 {flash.severity === 'critical' || flash.severity === 'high'
-                  ? <Siren size={34} color={(SV[flash.severity] || SV.low).dot} />
-                  : <AlertTriangle size={34} color={(SV[flash.severity] || SV.low).dot} />}
+                  ? <Siren size={34} color={v.dot} />
+                  : <AlertTriangle size={34} color={v.dot} />}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: (SV[flash.severity] || SV.low).dot }}>{flash.severity} alert</div>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: v.dot }}>{flash.severity} alert</div>
               <h2 style={{ margin: '8px 0 4px', fontSize: 22, fontWeight: 800, textTransform: 'capitalize' }}>{flash.type?.replace(/_/g, ' ')}</h2>
               <p style={{ margin: 0, fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{flash.message}</p>
             </div>
@@ -163,8 +212,8 @@ export default function AlertPanel() {
                 <div style={{
                   width: 58, height: 58, borderRadius: 14, flexShrink: 0,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: `${(SV[flash.severity] || SV.low).dot}14`,
-                  border: `1px solid ${(SV[flash.severity] || SV.low).dot}33`,
+                  background: `${v.dot}14`,
+                  border: `1px solid ${v.dot}33`,
                 }}>
                   <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{Math.ceil(remaining)}</span>
                   <span style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>sec</span>
@@ -173,9 +222,9 @@ export default function AlertPanel() {
               <div style={{ marginTop: 12, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 2,
-                  background: (SV[flash.severity] || SV.low).dot,
+                  background: v.dot,
                   transition: 'width 0.1s linear',
-                  width: `${(remaining / FLASH_SECONDS) * 100}%`,
+                  width: `${(remaining / ACCEPT_SECONDS) * 100}%`,
                 }} />
               </div>
             </div>

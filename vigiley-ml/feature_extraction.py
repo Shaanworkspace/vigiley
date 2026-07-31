@@ -101,7 +101,7 @@ class FeatureExtractor:
             ear_history.append(ear)
             if len(ear_history) >= 10:
                 window = ear_history[-min(len(ear_history), 90):]
-                closed = sum(1 for e in window if e < 0.21)
+                closed = sum(1 for e in window if e < 0.25)
                 perclos = closed / len(window)
 
         xs = [lm.x * w for lm in landmarks]
