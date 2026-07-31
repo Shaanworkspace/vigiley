@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { LayoutDashboard, Users, Bell, BarChart3, Eye } from 'lucide-react';
 
 const navItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-  { path: '/admin/drivers', label: 'Drivers', icon: '👥' },
-  { path: '/admin/alerts', label: 'Alerts', icon: '🔔' },
-  { path: '/admin/reports', label: 'Reports', icon: '📈' },
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/drivers', label: 'Drivers', icon: Users },
+  { path: '/admin/alerts', label: 'Alerts', icon: Bell },
+  { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ];
 
 export default function Sidebar() {
@@ -21,7 +22,7 @@ export default function Sidebar() {
   return (
     <aside style={styles.sidebar}>
       <div style={styles.brand}>
-        <span style={styles.brandIcon}>👁️</span>
+        <span style={styles.brandIcon}><Eye size={24} color="#00d4ff" /></span>
         <span style={styles.brandText}>VigilEye</span>
       </div>
 
@@ -36,7 +37,7 @@ export default function Sidebar() {
               borderLeft: isActive ? '3px solid #00d4ff' : '3px solid transparent',
             })}
           >
-            <span>{item.icon}</span>
+            <item.icon size={16} style={{ flexShrink: 0 }} />
             <span>{item.label}</span>
           </NavLink>
         ))}
@@ -76,7 +77,7 @@ const styles = {
     gap: 10,
     borderBottom: '1px solid #2a2a4a',
   },
-  brandIcon: { fontSize: 24 },
+  brandIcon: { display: 'flex', alignItems: 'center' },
   brandText: { fontSize: 18, fontWeight: 700, color: '#fff' },
   nav: { flex: 1, padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 2 },
   navItem: {

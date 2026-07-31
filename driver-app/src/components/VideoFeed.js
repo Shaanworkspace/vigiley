@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { driverAPI } from '../services/api';
-import { Play, Square, AlertTriangle } from 'lucide-react';
+import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from 'lucide-react';
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
 const CAPTURE_INTERVAL = 1000;
@@ -49,7 +49,16 @@ const LV = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#b91c1c'];
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-function WarningBar({ icon, label, value, warns }) {
+function WarningIcon({ lv }) {
+  const c = LV[lv || 0];
+  const size = 16;
+  if (lv >= 4) return <Siren size={size} color={c} />;
+  if (lv >= 3) return <AlertOctagon size={size} color={c} />;
+  if (lv >= 1) return <AlertTriangle size={size} color={c} />;
+  return <CheckCircle2 size={size} color={c} />;
+}
+
+function WarningBar({ label, value, warns }) {
   const w = warns.find(x => value >= x.min && value < x.max) || warns[warns.length - 1];
   const msg = Array.isArray(w?.msg) ? pick(w.msg) : (w?.msg || '');
   return (
@@ -59,7 +68,7 @@ function WarningBar({ icon, label, value, warns }) {
       background: `${LV[w?.lv || 0]}12`, borderLeft: `3px solid ${LV[w?.lv || 0]}`,
       transition: 'all 0.2s',
     }}>
-      <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{w?.icon || '✓'}</span>
+      <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}><WarningIcon lv={w?.lv} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 9, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
         <div style={{ fontSize: 12, color: LV[w?.lv || 0], fontWeight: 700, lineHeight: 1.3 }}>{msg}</div>
@@ -277,9 +286,9 @@ export default function VideoFeed() {
 
       {on && (
         <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <WarningBar icon="👁" label="Eyes (EAR)" value={displayEar} warns={EAR_WARN} />
-          <WarningBar icon="👄" label="Mouth (MAR)" value={displayMar} warns={MAR_WARN} />
-          <WarningBar icon="📊" label="Fatigue (PERCLOS)" value={displayPl} warns={PERCLOS_WARN} />
+          <WarningBar label="Eyes (EAR)" value={displayEar} warns={EAR_WARN} />
+          <WarningBar label="Mouth (MAR)" value={displayMar} warns={MAR_WARN} />
+          <WarningBar label="Fatigue (PERCLOS)" value={displayPl} warns={PERCLOS_WARN} />
 
           {noFace && (
             <div style={{

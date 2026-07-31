@@ -35,8 +35,8 @@ export default function Stats() {
   const [ref, visible] = useScrollReveal(0.1);
 
   return (
-    <section style={s.section}>
-      <div ref={ref} style={{
+    <section className="stats-section" style={s.section}>
+      <div ref={ref} className="stats-grid" style={{
         ...s.grid,
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(20px)',

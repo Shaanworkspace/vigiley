@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Footer() {
   return (
-    <footer style={s.footer}>
+    <footer className="footer-section" style={s.footer}>
       <div style={s.inner}>
         <div style={s.top}>
           <div style={s.brand}>
@@ -25,9 +25,9 @@ export default function Footer() {
           </div>
           <div style={s.col}>
             <h4 style={s.colTitle}>Access</h4>
-            <a href="http://localhost:3000/login" style={s.link}>Driver Login</a>
-            <a href="http://localhost:3001/admin/login" style={s.link}>Admin Login</a>
-            <a href="http://localhost:3000/register" style={s.link}>Register</a>
+            <a href="https://vigileye-driver.vercel.app/login" style={s.link}>Driver Login</a>
+            <a href="https://vigileye-admin.vercel.app/admin/login" style={s.link}>Admin Login</a>
+            <a href="https://vigileye-driver.vercel.app/register" style={s.link}>Register</a>
           </div>
           <div style={s.col}>
             <h4 style={s.colTitle}>Research</h4>

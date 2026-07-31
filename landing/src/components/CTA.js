@@ -1,5 +1,6 @@
 import React from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import { ArrowRight } from 'lucide-react';
 
 export default function CTA() {
   const [ref, visible] = useScrollReveal(0.1);
@@ -18,8 +19,8 @@ export default function CTA() {
           Deploy VigilEye across your fleet in minutes. No hardware investment required.
         </p>
         <div style={s.actions}>
-          <a href="http://localhost:3000/register" style={s.btnPrimary}>Try Driver Dashboard</a>
-          <a href="http://localhost:3001/admin/login" style={s.btnSecondary}>Admin Access →</a>
+          <a href="https://vigileye-driver.vercel.app/register" style={s.btnPrimary}>Try Driver Dashboard</a>
+          <a href="https://vigileye-admin.vercel.app/admin/login" style={s.btnSecondary}>Admin Access <ArrowRight size={14} style={{ marginLeft: 6, verticalAlign: 'middle' }} /></a>
         </div>
       </div>
     </section>

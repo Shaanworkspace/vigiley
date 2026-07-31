@@ -1,5 +1,6 @@
 import React from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import { Monitor, Settings, Database, Brain } from 'lucide-react';
 
 const techs = [
   { name: 'React', color: '#61dafb' },
@@ -17,7 +18,7 @@ export default function TechStack() {
   const [ref2, visible2] = useScrollReveal(0.1);
 
   return (
-    <section id="technology" style={s.section}>
+    <section id="technology" className="tech-section" style={s.section}>
       <div ref={ref} style={{
         textAlign: 'center', marginBottom: 48,
         opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(30px)',
@@ -40,12 +41,12 @@ export default function TechStack() {
         ))}
       </div>
 
-      <div style={s.archGrid}>
+      <div className="arch-grid" style={s.archGrid}>
         {[
-          { layer: 'Frontend', items: 'React 18, React Router, WebSocket client, Recharts', icon: '🖥' },
-          { layer: 'Backend', items: 'Node.js, Express, Socket.io, JWT, Multer', icon: '⚙' },
-          { layer: 'Database', items: 'MongoDB, Mongoose ODM, Aggregation Pipeline', icon: '🗄' },
-          { layer: 'Detection', items: 'Multi-modal fusion, Temporal attention, SDS algorithm', icon: '🧠' },
+          { layer: 'Frontend', items: 'React 18, React Router, WebSocket client, Recharts', icon: Monitor, color: '#60a5fa' },
+          { layer: 'Backend', items: 'Node.js, Express, Socket.io, JWT, Multer', icon: Settings, color: '#34d399' },
+          { layer: 'Database', items: 'MongoDB, Mongoose ODM, Aggregation Pipeline', icon: Database, color: '#a78bfa' },
+          { layer: 'Detection', items: 'Multi-modal fusion, Temporal attention, SDS algorithm', icon: Brain, color: '#fbbf24' },
         ].map((item) => (
           <ArchCard key={item.layer} item={item} />
         ))}
@@ -56,6 +57,7 @@ export default function TechStack() {
 
 function ArchCard({ item }) {
   const [ref, visible] = useScrollReveal(0.1);
+  const Icon = item.icon;
   return (
     <div ref={ref} style={{
       ...s.archCard,
@@ -63,7 +65,13 @@ function ArchCard({ item }) {
       transform: visible ? 'translateY(0)' : 'translateY(20px)',
       transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1)',
     }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icon}</div>
+      <div style={{
+        width: 44, height: 44, borderRadius: 12, marginBottom: 12,
+        background: `${item.color}15`, color: item.color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon size={22} />
+      </div>
       <h4 style={s.archTitle}>{item.layer}</h4>
       <p style={s.archDesc}>{item.items}</p>
     </div>

@@ -38,7 +38,7 @@ export default function HowItWorks() {
   const [ref, visible] = useScrollReveal(0.05);
 
   return (
-    <section id="how-it-works" style={s.section}>
+    <section id="how-it-works" className="how-section" style={s.section}>
       <div ref={ref} style={{
         ...s.inner,
         opacity: visible ? 1 : 0,
@@ -64,6 +64,7 @@ function StepItem({ step, index }) {
   return (
     <div
       ref={ref}
+      className="how-step"
       style={{
         ...s.step,
         flexDirection: isEven ? 'row' : 'row-reverse',
@@ -77,11 +78,11 @@ function StepItem({ step, index }) {
         <h3 style={s.stepTitle}>{step.title}</h3>
         <p style={s.stepDesc}>{step.desc}</p>
       </div>
-      <div style={s.stepLine}>
-        <div style={{ ...s.stepDot, borderColor: step.color }} />
+      <div className="how-line" style={s.stepLine}>
+        <div className="how-dot" style={{ ...s.stepDot, borderColor: step.color }} />
         {index < steps.length - 1 && <div style={{ ...s.line, background: `linear-gradient(to bottom, ${step.color}, ${steps[index + 1]?.color || step.color})` }} />}
       </div>
-      <div style={s.stepSpacer} />
+      <div className="how-spacer" style={s.stepSpacer} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import StatCard from '../components/StatCard';
 import AlertBadge from '../components/AlertBadge';
 import { adminAPI } from '../services/api';
 import { useSocket } from '../context/SocketContext';
-import { Users, Activity, Bell, Shield, AlertTriangle, Phone, Mail, Truck, IdCard, Clock, ChevronRight, Lock } from 'lucide-react';
+import { Users, Activity, Bell, Shield, AlertTriangle, Phone, Mail, Truck, IdCard, Clock, ChevronRight, Lock, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const RC = {low:'#22c55e',medium:'#f59e0b',high:'#ef4444',critical:'#dc2626'};
@@ -106,7 +106,7 @@ export default function Dashboard() {
               fontSize: 64, fontWeight: 900, color: RC[sev],
               textShadow: `0 0 40px ${RC[sev]}, 0 0 80px ${RC[sev]}44`,
               animation: 'fp 0.8s ease-in-out infinite',
-            }}>⚠</div>
+            }}><AlertTriangle size={64} color={RC[sev]} /></div>
             <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', textAlign: 'center', maxWidth: 500 }}>
               {fullScreenAlert.driver?.name || 'Driver'} — {fullScreenAlert.type?.replace(/_/g, ' ') || 'Alert'}
             </div>
@@ -159,12 +159,12 @@ export default function Dashboard() {
                       flex: 1, padding: '5px 0', borderRadius: 8, border: 'none',
                       background: 'rgba(34,197,94,0.15)', color: '#86efac',
                       fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    }} onClick={() => dismissToast(t._toastId)}>✓ Accept</button>
+                    }} onClick={() => dismissToast(t._toastId)}><Check size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} /> Accept</button>
                     <button style={{
                       flex: 1, padding: '5px 0', borderRadius: 8, border: 'none',
                       background: 'rgba(239,68,68,0.12)', color: '#fca5a5',
                       fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    }} onClick={() => dismissToast(t._toastId)}>✗ Reject</button>
+                    }} onClick={() => dismissToast(t._toastId)}><X size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} /> Reject</button>
                   </div>
                 </div>
               </div>

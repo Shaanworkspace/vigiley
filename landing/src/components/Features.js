@@ -96,7 +96,7 @@ export default function Features() {
   const [ref, visible] = useScrollReveal(0.05);
 
   return (
-    <section id="features" style={s.section}>
+    <section id="features" className="feature-section" style={s.section}>
       <div ref={ref} style={{
         ...s.inner,
         opacity: visible ? 1 : 0,
@@ -110,7 +110,7 @@ export default function Features() {
           visibility into driver alertness.
         </p>
       </div>
-      <div style={s.grid}>
+      <div className="feature-grid" style={s.grid}>
         {features.map((feature, i) => (
           <FeatureCard key={feature.title} feature={feature} index={i} />
         ))}

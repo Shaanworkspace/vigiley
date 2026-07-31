@@ -103,7 +103,7 @@ export default function DriverDetail() {
                 <div style={{ fontSize: 32, fontWeight: 700 }}>{sess.drowsinessScore?.toFixed(0)}</div>
                 <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px' }}>Current SDS</div>
                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                  {sess.riskLevel === 'critical' ? '⚠ Critical' : sess.riskLevel === 'high' ? '⚠ High' : '✓ Normal'}
+                  {sess.riskLevel === 'critical' ? 'Critical' : sess.riskLevel === 'high' ? 'High' : 'Normal'}
                 </div>
               </div>
             )}

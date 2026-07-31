@@ -50,7 +50,7 @@ function TestimonialCard({ t, index }) {
 export default function Testimonials() {
   const [ref, visible] = useScrollReveal(0.05);
   return (
-    <section style={s.section}>
+    <section className="testi-section" style={s.section}>
       <div ref={ref} style={{
         textAlign: 'center', marginBottom: 48,
         opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(30px)',
@@ -59,7 +59,7 @@ export default function Testimonials() {
         <span style={s.badge}>Testimonials</span>
         <h2 style={s.title}>Trusted by fleet operators</h2>
       </div>
-      <div style={s.grid}>
+      <div className="testi-grid" style={s.grid}>
         {testimonials.map((t, i) => (
           <TestimonialCard key={t.author} t={t} index={i} />
         ))}

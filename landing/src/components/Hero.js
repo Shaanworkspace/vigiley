@@ -1,4 +1,14 @@
 import React from 'react';
+import { Sparkles, ChevronDown, Gauge, Timer, ShieldCheck, Activity, Zap } from 'lucide-react';
+
+const DRIVER_URL = 'https://vigileye-driver.vercel.app/login';
+
+const stats = [
+  { val: '94.7%', label: 'Detection accuracy', icon: Activity, color: '#60a5fa' },
+  { val: '<200ms', label: 'Alert latency', icon: Zap, color: '#34d399' },
+  { val: '2.3%', label: 'False positive rate', icon: ShieldCheck, color: '#a78bfa' },
+  { val: '24/7', label: 'Real-time monitoring', icon: Timer, color: '#fbbf24' },
+];
 
 export default function Hero() {
   return (
@@ -6,7 +16,10 @@ export default function Hero() {
       <div style={s.glow1} />
       <div style={s.glow2} />
       <div style={s.inner}>
-        <div style={s.badge}>Multi-Modal Drowsiness Detection</div>
+        <div style={s.badge}>
+          <Sparkles size={12} style={{ marginRight: 6, verticalAlign: 'middle', color: '#93c5fd' }} />
+          Multi-Modal Drowsiness Detection
+        </div>
         <h1 style={s.title}>
           Never let fatigue<br />
           <span style={s.gradient}>go unnoticed</span>
@@ -17,24 +30,27 @@ export default function Hero() {
         </p>
         <div style={s.actions}>
           <a href="#features" style={s.btnPrimary}>Explore features</a>
-          <a href="http://localhost:3000/login" style={s.btnSecondary}>Driver dashboard →</a>
+          <a href={DRIVER_URL} style={s.btnSecondary}>Driver dashboard <Gauge size={15} style={{ marginLeft: 6, verticalAlign: 'middle' }} /></a>
         </div>
+
         <div style={s.statsRow}>
-          {[
-            { val: '94.7%', label: 'Detection accuracy' },
-            { val: '<200ms', label: 'Alert latency' },
-            { val: '2.3%', label: 'False positive rate' },
-            { val: '24/7', label: 'Real-time monitoring' },
-          ].map((s) => (
-            <div key={s.label} style={s.statItem}>
-              <span style={s.statVal}>{s.val}</span>
-              <span style={s.statLabel}>{s.label}</span>
-            </div>
-          ))}
+          {stats.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="hero-stat-tag" style={{ ...s.statItem, animation: `heroTag 0.6s cubic-bezier(0.16,1,0.3,1) ${0.5 + i * 0.15}s both` }}>
+                <div style={s.statIconWrap}>
+                  <Icon size={16} color={item.color} />
+                </div>
+                <span style={s.statVal}>{item.val}</span>
+                <span style={s.statLabel}>{item.label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
+
       <div style={s.scrollHint}>
-        <div style={s.scrollDot} />
+        <ChevronDown size={20} style={s.scrollIcon} />
       </div>
     </section>
   );
@@ -82,18 +98,26 @@ const s = {
     border: '1.5px solid rgba(255,255,255,0.15)', color: '#f1f5f9',
     textDecoration: 'none', transition: 'all 0.2s',
   },
-  statsRow: { display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap' },
-  statItem: { textAlign: 'center' },
-  statVal: { display: 'block', fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' },
-  statLabel: { fontSize: 13, color: '#64748b', marginTop: 2 },
+  statsRow: { display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' },
+  statItem: {
+    textAlign: 'center', minWidth: 170,
+    padding: '16px 12px', borderRadius: 14,
+    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+    backdropFilter: 'blur(4px)', transition: 'all 0.25s',
+  },
+  statIconWrap: {
+    width: 32, height: 32, borderRadius: 9, margin: '0 auto 8px',
+    background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  statVal: { display: 'block', fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' },
+  statLabel: { fontSize: 12, color: '#64748b', marginTop: 2 },
   scrollHint: {
-    position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-    width: 24, height: 40, borderRadius: 12,
-    border: '2px solid rgba(255,255,255,0.12)',
-    display: 'flex', justifyContent: 'center', paddingTop: 8,
+    position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+    width: 40, height: 40, borderRadius: '50%',
+    border: '1.5px solid rgba(255,255,255,0.12)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    animation: 'bounceDown 2s ease-in-out infinite',
+    cursor: 'pointer',
   },
-  scrollDot: {
-    width: 4, height: 8, borderRadius: 2, background: '#64748b',
-    animation: 'scrollDot 2s ease-in-out infinite',
-  },
+  scrollIcon: { color: '#94a3b8' },
 };
