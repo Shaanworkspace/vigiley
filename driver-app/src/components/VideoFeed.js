@@ -177,11 +177,11 @@ export default function VideoFeed({ onStatusChange }) {
   const mc = displayMar >= MAR_YAWN ? LV[2] : LV[0];
 
   return (
-    <div style={{
+    <div className="vf-root" style={{
       background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
       borderRadius: 16, overflow: 'hidden', backdropFilter: 'blur(4px)',
     }}>
-      <div style={{ position: 'relative', background: '#0f172a', aspectRatio: '4/3', overflow: 'hidden' }}>
+      <div className="vf-video" style={{ position: 'relative', background: '#0f172a', aspectRatio: '4/3', overflow: 'hidden' }}>
         <Webcam ref={wc} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           screenshotFormat="image/jpeg" mirrored videoConstraints={{ facingMode: 'user', width: 320, height: 240 }} />
         {!on && (
@@ -289,7 +289,7 @@ export default function VideoFeed({ onStatusChange }) {
       </div>
 
       {on && (
-        <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="vf-extra" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <WarningBar label="Eyes (EAR)" value={displayEar} warns={EAR_WARN} />
           <WarningBar label="Mouth (MAR)" value={displayMar} warns={MAR_WARN} />
           <WarningBar label="Fatigue (PERCLOS)" value={displayPl} warns={PERCLOS_WARN} />

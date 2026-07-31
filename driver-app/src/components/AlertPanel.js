@@ -52,7 +52,6 @@ export default function AlertPanel({ liveStatus }) {
 
   const cancelIfRecovered = (status) => {
     if (!flashRef.current) return;
-    if (phaseRef.current !== 'countdown') return;
     if (!status) return;
     const recovered = ['awake', 'heavy_eyelids', 'mouth_open'].includes(status);
     if (recovered) {
@@ -133,7 +132,8 @@ export default function AlertPanel({ liveStatus }) {
   const v = (flash?.severity && SV[flash.severity]) || SV.low;
 
   return (
-    <div style={{ position: 'relative', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', minHeight: 400 }}>
+    <>
+      <div className="ap-panel" style={{ position: 'relative', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', minHeight: 400 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Bell size={15} color="#64748b" /><span style={{ fontSize: 14, fontWeight: 600 }}>Alerts</span></div>
         {p.length > 0 && <span style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', fontSize: 10, fontWeight: 700, padding: '1px 8px', borderRadius: 10 }}>{p.length}</span>}
@@ -164,6 +164,7 @@ export default function AlertPanel({ liveStatus }) {
             </div>
           );
         })}
+      </div>
       </div>
 
       {flash && phase === 'countdown' && (
@@ -305,6 +306,6 @@ export default function AlertPanel({ liveStatus }) {
       )}
 
       <style>{`@keyframes fp { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }`}</style>
-    </div>
+    </>
   );
 }
