@@ -154,22 +154,25 @@ router.post('/detection', protect, async (req, res) => {
                 : `${status.replace('_', ' ')} detected with ${confPct.toFixed(0)}% confidence`,
           };
 
-          const alert = await Alert.create(alertData);
+          const recentPending = await Alert.findOne({
+            driver: req.user._id,
+            isAcknowledged: false,
+            isEscalated: false,
+            timestamp: { $gte: new Date(Date.now() - 30000) },
+          });
 
-          updateFields.$inc.totalAlerts = 1;
-          updateFields.$inc[`${alertSeverity}Alerts`] = 1;
+          if (!recentPending) {
+            const alert = await Alert.create(alertData);
 
-          if (req.io) {
-            req.io.to('admin-room').emit('alert', {
-              ...alert.toObject(),
-              driver: req.user,
-              sds: Math.round(sds * 10) / 10,
-              riskLevel,
-            });
-            req.io.to(`driver-${req.user._id}`).emit('warning', {
-              ...alert.toObject(),
-              sds: Math.round(sds * 10) / 10,
-            });
+            updateFields.$inc.totalAlerts = 1;
+            updateFields.$inc[`${alertSeverity}Alerts`] = 1;
+
+            if (req.io) {
+              req.io.to(`driver-${req.user._id}`).emit('warning', {
+                ...alert.toObject(),
+                sds: Math.round(sds * 10) / 10,
+              });
+            }
           }
         }
       }

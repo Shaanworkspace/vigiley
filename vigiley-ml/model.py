@@ -104,8 +104,10 @@ class DrowsinessDetector:
 
         if eyes_closed:
             self.close_counter += 1
+            self.yawn_counter = 0
             self.normal_counter = 0
         elif heavy_lids:
+            self.yawn_counter = 0
             self.normal_counter = 0
         elif mouth_open:
             self.yawn_counter += 1

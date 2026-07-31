@@ -65,6 +65,7 @@ export const driverAPI = {
 export const alertAPI = {
   getAlerts: () => api.get('/alerts', { _noLoading: true }),
   acknowledgeAlert: (id) => api.put(`/alerts/${id}/acknowledge`, null, { _noLoading: true }),
+  escalateAlert: (id) => api.put(`/alerts/${id}/escalate`, null, { _noLoading: true }),
 };
 
 export default api;

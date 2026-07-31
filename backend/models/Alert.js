@@ -13,6 +13,8 @@ const alertSchema = new mongoose.Schema(
     isAcknowledged: { type: Boolean, default: false },
     acknowledgedAt: { type: Date },
     acknowledgedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    isEscalated: { type: Boolean, default: false },
+    escalatedAt: { type: Date },
     location: {
       lat: { type: Number },
       lng: { type: Number },
