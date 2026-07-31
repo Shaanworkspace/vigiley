@@ -7,6 +7,7 @@ import { startAlarm, stopAlarm } from '../utils/alarm';
 const SV = { critical: { bg: 'rgba(239,68,68,0.1)', dot: '#ef4444' }, high: { bg: 'rgba(234,88,12,0.1)', dot: '#ea580c' }, medium: { bg: 'rgba(245,158,11,0.1)', dot: '#f59e0b' }, low: { bg: 'rgba(59,130,246,0.08)', dot: '#3b82f6' } };
 const COUNTDOWN_SECONDS = 5;
 const ACCEPT_SECONDS = 5;
+const ALARM_ESCALATE_SECONDS = 10;
 
 export default function AlertPanel({ liveStatus }) {
   const [alerts, setAlerts] = useState([]);
@@ -82,8 +83,13 @@ export default function AlertPanel({ liveStatus }) {
     startPhase();
   };
 
+  const escalateToAdmin = () => {
+    alertAPI.escalateAlert(flashRef.current._id).catch(() => { });
+    load();
+  };
+
   const startPhase = () => {
-    const dur = phaseRef.current === 'countdown' ? COUNTDOWN_SECONDS : ACCEPT_SECONDS;
+    const dur = phaseRef.current === 'countdown' ? COUNTDOWN_SECONDS : phaseRef.current === 'accept' ? ACCEPT_SECONDS : ALARM_ESCALATE_SECONDS;
     setRemaining(dur);
     const start = Date.now();
     stopTimer();
@@ -96,12 +102,13 @@ export default function AlertPanel({ liveStatus }) {
           phaseRef.current = 'accept';
           setPhase('accept');
           startPhase();
-        } else {
+        } else if (phaseRef.current === 'accept') {
           startAlarm();
           phaseRef.current = 'alarm';
           setPhase('alarm');
-          alertAPI.escalateAlert(flashRef.current._id).catch(() => { });
-          load();
+          startPhase();
+        } else {
+          escalateToAdmin();
         }
       }
     }, 100);
@@ -281,7 +288,9 @@ export default function AlertPanel({ liveStatus }) {
               marginBottom: 10,
             }}>ALERT!</div>
             <div style={{ fontSize: 15, color: '#fca5a5', marginBottom: 26, fontWeight: 600 }}>
-              Not accepted — alert sent to admin. Press Accept to stop the alarm.
+              {remaining > 0
+                ? `Admin alert in ${Math.ceil(remaining)}s — press ACCEPT to stop the alarm`
+                : 'Alert sent to admin — press ACCEPT to stop the alarm'}
             </div>
             <button onClick={() => handleAccept(flash)} style={{
               width: '100%', padding: '18px 0', borderRadius: 14, border: 'none',

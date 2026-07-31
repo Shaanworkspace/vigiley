@@ -35,6 +35,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const lr = useRef(null);
   const prevLen = useRef(0);
+  const toastSeen = useRef(new Set());
 
   useEffect(() => { load(); }, []);
   const resolvedIds = useRef(new Set());
@@ -42,11 +43,16 @@ export default function Dashboard() {
   const [fullScreenAlert, setFullScreenAlert] = useState(null);
 
   useEffect(() => {
+    prevLen.current = liveAlerts.length;
+  }, []);
+  useEffect(() => {
     if (liveAlerts.length > prevLen.current) {
       const newAlerts = liveAlerts.slice(0, liveAlerts.length - prevLen.current);
       newAlerts.forEach(a => {
+        if (toastSeen.current.has(a._id)) return;
+        toastSeen.current.add(a._id);
         const id = Date.now() + Math.random();
-        setToasts(p => [...p, { ...a, _toastId: id }]);
+        setToasts(p => [...p, { ...a, _toastId: id }].slice(0, 5));
         timerRefs.current[id] = setTimeout(() => {
           if (!resolvedIds.current.has(id)) setFullScreenAlert(a);
           setToasts(p => p.filter(t => t._toastId !== id));

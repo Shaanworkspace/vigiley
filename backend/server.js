@@ -117,11 +117,6 @@ io.on('connection', (socket) => {
     socket.join('admin-room');
   });
 
-  socket.on('drowsiness-alert', (data) => {
-    io.to('admin-room').emit('alert', data);
-    io.to(`driver-${data.driverId}`).emit('warning', data);
-  });
-
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
