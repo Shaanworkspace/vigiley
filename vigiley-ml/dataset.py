@@ -1,3 +1,19 @@
+"""
+================================================================================
+VIGILEYE — Dataset utilities
+================================================================================
+
+REAL DATASET (preferred):
+    NTHU-DDD driver drowsiness face images (datasets/nthu-ddd).
+    Features are extracted with MediaPipe by build_real_dataset.py and saved
+    to datasets/features.npz. train.py loads this file automatically.
+
+FALLBACK (synthetic):
+    generate_synthetic_dataset() below is only used when features.npz
+    is missing. It simulates normal/drowsy feature distributions with numpy.
+================================================================================
+"""
+
 import numpy as np
 
 def generate_synthetic_dataset(n_samples=10000, noise=0.02):

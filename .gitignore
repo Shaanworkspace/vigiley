@@ -9,3 +9,9 @@ coverage/
 .idea/
 *.swp
 *.swo
+
+# Raw datasets (too large for git) - rebuild via build_real_dataset.py
+vigiley-ml/datasets/nthu-ddd/
+
+__pycache__/
+*.pyc
