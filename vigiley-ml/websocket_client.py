@@ -1,10 +1,12 @@
+import os
 import socketio
 import time
 import threading
 
 class AlertWebSocketClient:
-    def __init__(self, backend_url='http://localhost:5001', driver_id='ml-service'):
-        self.backend_url = backend_url
+    def __init__(self, backend_url=None, driver_id='ml-service'):
+        self.backend_url = backend_url or os.environ.get(
+            'BACKEND_SOCKET_URL', 'http://localhost:5001')
         self.driver_id = driver_id
         self._sio = None
         self.connected = False
@@ -53,7 +55,15 @@ class AlertWebSocketClient:
             'driverId': self.driver_id,
             'status': detection_result['status'],
             'confidence': detection_result['confidence'],
-            'features': detection_result.get('features', {}),
+            'features': {
+                'ear': detection_result.get('ear'),
+                'mar': detection_result.get('mar'),
+                'pitch': detection_result.get('pitch'),
+                'yaw': detection_result.get('yaw'),
+                'perclos': detection_result.get('perclos'),
+                'close_counter': detection_result.get('close_counter'),
+                'yawn_counter': detection_result.get('yawn_counter'),
+            },
             'timestamp': time.time(),
         }
 

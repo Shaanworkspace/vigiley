@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from feature_extraction import FeatureExtractor
 from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, PERCLOS_WINDOW, \
-    FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
+    FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN, FRAMES_RESET
 from websocket_client import AlertWebSocketClient
 
 app = FastAPI(title='VigilEye ML API', version='2.0.0')
@@ -79,6 +79,10 @@ def predict(req: PredictRequest):
         state, _ = detector.get_state()
         frame_count += 1
 
+        if detector._recovered:
+            ear_history.clear()
+            detector._recovered = False
+
     if len(ear_history) > 300:
         ear_history[:100] = []
 
@@ -139,7 +143,7 @@ def thresholds():
         'frames_drowsy': FRAMES_DROWSY,
         'frames_critical': FRAMES_CRITICAL,
         'frames_yawn': FRAMES_YAWN,
-        'frames_reset': 30,
+        'frames_reset': FRAMES_RESET,
     }
 
 

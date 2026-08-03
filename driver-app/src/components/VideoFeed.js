@@ -149,6 +149,7 @@ export default function VideoFeed({ onStatusChange }) {
   const start = async () => {
     try {
       await driverAPI.startSession();
+      fetch(`${ML_API}/reset`, { method: 'POST' }).catch(() => {});
       setSe(true); setOn(true); setNoFace(false);
       setTimeout(detect, 100);
       iv.current = setInterval(detect, CAPTURE_INTERVAL);

@@ -71,7 +71,7 @@ EAR_THRESHOLD = 0.28
 EAR_LOW = 0.34
 MAR_THRESHOLD = 0.40
 MAR_HALF = 0.30
-PERCLOS_WINDOW = 180
+PERCLOS_WINDOW = 60
 PERCLOS_RISK = 0.30
 
 FRAMES_CLOSED = 1
@@ -93,6 +93,7 @@ class DrowsinessDetector:
         self.ear_history = []
         self.alerts = []
         self._last_alert_time = 0
+        self._recovered = False
 
     def _calc_perclos(self, ear_history):
         if not ear_history:
@@ -114,19 +115,20 @@ class DrowsinessDetector:
 
         if eyes_closed:
             self.close_counter += 1
-            self.yawn_counter = 0
             self.normal_counter = 0
-        elif mouth_open or yawn_combo:
-            self.yawn_counter += 1
-            self.normal_counter = 0
-        elif heavy_lids:
-            self.yawn_counter = 0
-            self.normal_counter = 0
+            self._recovered = False
         else:
             self.normal_counter += 1
+
+            if mouth_open or yawn_combo:
+                self.yawn_counter += 1
+            else:
+                self.yawn_counter = 0
+
             if self.normal_counter >= FRAMES_RESET:
                 self.close_counter = 0
                 self.yawn_counter = 0
+                self._recovered = True
 
         # Critical — 5s+ sustained closure OR PERCLOS > 50%
         if self.close_counter >= FRAMES_CRITICAL or perclos > 0.50:
@@ -189,6 +191,7 @@ class DrowsinessDetector:
         self.current_state = 'awake'
         self.ear_history.clear()
         self.alerts.clear()
+        self._recovered = False
 
     def load(self, path=None):
         pass
