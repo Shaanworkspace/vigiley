@@ -50,7 +50,6 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (data) => api.post('/auth/login', data),
-  register: (data) => api.post('/auth/register', data),
   getMe: () => api.get('/auth/me'),
 };
 
@@ -61,7 +60,6 @@ export const adminAPI = {
   getAlerts: (params) => api.get('/admin/alerts', { params, _noLoading: true }),
   acknowledgeAlert: (id) => api.put(`/admin/alerts/${id}/acknowledge`, null, { _noLoading: true }),
   getReportSummary: (params) => api.get('/reports/summary', { params, _noLoading: true }),
-  getDriverReport: (id) => api.get(`/reports/driver/${id}`, { _noLoading: true }),
 };
 
 export default api;

@@ -26,5 +26,7 @@ const alertSchema = new mongoose.Schema(
 
 alertSchema.index({ driver: 1, timestamp: -1 });
 alertSchema.index({ isAcknowledged: 1 });
+alertSchema.index({ driver: 1, isAcknowledged: 1, timestamp: -1 });
+alertSchema.index({ timestamp: 1 }, { expireAfterSeconds: 604800 });
 
 module.exports = mongoose.model('Alert', alertSchema);

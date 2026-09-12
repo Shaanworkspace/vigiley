@@ -50,12 +50,15 @@ router.get('/drivers/:id', protect, adminOnly, async (req, res) => {
       status: 'active',
     });
 
-    const recentAlerts = await Alert.find({ driver: driver._id })
+    const recentAlerts = await Alert.find({
+      driver: driver._id,
+      timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    })
       .sort({ timestamp: -1 })
       .limit(20);
 
     const stats = await DetectionLog.aggregate([
-      { $match: { driver: driver._id } },
+      { $match: { driver: driver._id, timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
@@ -85,6 +88,8 @@ router.get('/alerts', protect, adminOnly, async (req, res) => {
       filter.timestamp = {};
       if (startDate) filter.timestamp.$gte = new Date(startDate);
       if (endDate) filter.timestamp.$lte = new Date(endDate);
+    } else if (!status && !severity) {
+      filter.timestamp = { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
     }
 
     const alerts = await Alert.find(filter)
@@ -121,8 +126,8 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
   try {
     const totalDrivers = await User.countDocuments({ role: 'driver' });
     const activeDrivers = await User.countDocuments({ role: 'driver', isActive: true });
-    const totalAlerts = await Alert.countDocuments();
-    const unacknowledgedAlerts = await Alert.countDocuments({ isAcknowledged: false });
+    const totalAlerts = await Alert.countDocuments({ timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } });
+    const unacknowledgedAlerts = await Alert.countDocuments({ isAcknowledged: false, timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
     const activeSessions = await DriverSession.countDocuments({ status: 'active' });
 
     const todayStart = new Date();
@@ -133,6 +138,7 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
     });
 
     const alertsBySeverity = await Alert.aggregate([
+      { $match: { timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } },
       { $group: { _id: '$severity', count: { $sum: 1 } } },
     ]);
 

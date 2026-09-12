@@ -15,3 +15,5 @@ vigiley-ml/datasets/nthu-ddd/
 
 __pycache__/
 *.pyc
+vigiley-ml/venv/
+model/

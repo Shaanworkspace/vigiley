@@ -44,7 +44,7 @@ Based on well-known published research:
    FRAMES_CRITICAL 5         5s+ closure → "critical" alert
                               (long-duration microsleep, NHTSA upper bound)
 
-   FRAMES_YAWN     2         2s sustained MAR>0.5 → "yawning" confirmed
+   FRAMES_YAWN     3         3s sustained MAR>0.5 → "yawning" confirmed
 
    FRAMES_RESET    5         5s of normal state → counters reset
                               (ensures drowsy events are distinct)
@@ -67,18 +67,18 @@ Based on well-known published research:
 ================================================================================
 """
 
-EAR_THRESHOLD = 0.28
-EAR_LOW = 0.34
-MAR_THRESHOLD = 0.40
-MAR_HALF = 0.30
+EAR_THRESHOLD = 0.22
+EAR_LOW = 0.28
+MAR_THRESHOLD = 0.50
+MAR_HALF = 0.35
 PERCLOS_WINDOW = 60
-PERCLOS_RISK = 0.30
+PERCLOS_RISK = 0.35
 
 FRAMES_CLOSED = 1
 FRAMES_MICRO = 2
-FRAMES_DROWSY = 3
-FRAMES_CRITICAL = 5
-FRAMES_YAWN = 2
+FRAMES_DROWSY = 4
+FRAMES_CRITICAL = 6
+FRAMES_YAWN = 4
 FRAMES_RESET = 5
 
 
@@ -91,6 +91,7 @@ class DrowsinessDetector:
         self.total_yawn_events = 0
         self.current_state = 'awake'
         self.ear_history = []
+        self.mar_history = []
         self.alerts = []
         self._last_alert_time = 0
         self._recovered = False
@@ -103,8 +104,13 @@ class DrowsinessDetector:
         return closed / len(window) if window else 0.0
 
     def predict_frame(self, features, ear_history=None):
-        ear = features['eye_aspect_ratio']
-        mar = features['mouth_aspect_ratio']
+        ear_raw = features['eye_aspect_ratio']
+        mar_raw = features['mouth_aspect_ratio']
+        self.mar_history.append(mar_raw)
+        if len(self.mar_history) > 3:
+            self.mar_history.pop(0)
+        ear = sum(ear_history[-2:] + [ear_raw]) / 3 if ear_history and len(ear_history) >= 2 else ear_raw
+        mar = sum(self.mar_history) / len(self.mar_history) if len(self.mar_history) >= 2 else mar_raw
         perclos = self._calc_perclos(ear_history or self.ear_history)
 
         eyes_closed = ear < EAR_THRESHOLD
@@ -190,6 +196,7 @@ class DrowsinessDetector:
         self.normal_counter = 0
         self.current_state = 'awake'
         self.ear_history.clear()
+        self.mar_history.clear()
         self.alerts.clear()
         self._recovered = False
 

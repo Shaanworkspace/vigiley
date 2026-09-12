@@ -16,16 +16,10 @@ const driverSessionSchema = new mongoose.Schema(
     highAlerts: { type: Number, default: 0 },
     mediumAlerts: { type: Number, default: 0 },
     lowAlerts: { type: Number, default: 0 },
-    avgEyeAspectRatio: { type: Number, default: 0 },
-    avgMouthAspectRatio: { type: Number, default: 0 },
-    avgHeadPitch: { type: Number, default: 0 },
-    avgHeadYaw: { type: Number, default: 0 },
     drowsinessScore: { type: Number, default: 0, min: 0, max: 100 },
     peakDrowsinessScore: { type: Number, default: 0, min: 0, max: 100 },
     sdsHistory: [{ score: Number, timestamp: Date }],
-    temporalDecayFactor: { type: Number, default: 0.95 },
     lastSDSUpdate: { type: Date },
-    distanceCovered: { type: Number, default: 0 },
     detectionCount: { type: Number, default: 0 },
     normalCount: { type: Number, default: 0 },
     yawningCount: { type: Number, default: 0 },
@@ -40,5 +34,9 @@ const driverSessionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+driverSessionSchema.index({ driver: 1, startTime: -1 });
+driverSessionSchema.index({ status: 1 });
+driverSessionSchema.index({ startTime: 1 }, { expireAfterSeconds: 2592000 });
 
 module.exports = mongoose.model('DriverSession', driverSessionSchema);

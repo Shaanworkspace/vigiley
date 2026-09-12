@@ -13,12 +13,12 @@ const detectionLogSchema = new mongoose.Schema(
     mouthAspectRatio: { type: Number, default: 0 },
     headPitch: { type: Number, default: 0 },
     headYaw: { type: Number, default: 0 },
-    imageUrl: { type: String, default: '' },
     timestamp: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
 detectionLogSchema.index({ driver: 1, timestamp: -1 });
+detectionLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 604800 });
 
 module.exports = mongoose.model('DetectionLog', detectionLogSchema);

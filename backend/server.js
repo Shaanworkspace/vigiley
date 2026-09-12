@@ -19,7 +19,6 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002',
   'https://vigileye-driver.vercel.app', 'https://vigileye-admin.vercel.app', 'https://vigileye-landing.vercel.app',
-  'https://vigiley-ml.onrender.com',
 ];
 
 const io = new Server(server, {
@@ -107,8 +106,6 @@ app.post('/api/setup', async (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
   socket.on('join-driver', (driverId) => {
     socket.join(`driver-${driverId}`);
   });
@@ -117,9 +114,7 @@ io.on('connection', (socket) => {
     socket.join('admin-room');
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
+  socket.on('disconnect', () => {});
 });
 
 mongoose.set('bufferCommands', true);
@@ -132,10 +127,7 @@ mongoose
     maxPoolSize: 5,
     minPoolSize: 0,
   })
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch(() => {});
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => {});

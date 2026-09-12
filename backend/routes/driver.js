@@ -21,7 +21,10 @@ router.get('/dashboard', protect, async (req, res) => {
       status: 'active',
     }).sort({ startTime: -1 });
 
-    const recentAlerts = await Alert.find({ driver: driverId })
+    const recentAlerts = await Alert.find({
+      driver: driverId,
+      timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    })
       .sort({ timestamp: -1 })
       .limit(10);
 
@@ -74,7 +77,6 @@ router.post('/detection', protect, async (req, res) => {
       mouthAspectRatio = 0.1,
       headPitch = 0,
       headYaw = 0,
-      imageUrl,
     } = req.body;
 
     const log = await DetectionLog.create({
@@ -85,7 +87,6 @@ router.post('/detection', protect, async (req, res) => {
       mouthAspectRatio,
       headPitch,
       headYaw,
-      imageUrl,
     });
 
     const activeSession = await DriverSession.findOne({
@@ -95,16 +96,21 @@ router.post('/detection', protect, async (req, res) => {
 
     if (activeSession) {
       const prevSDS = activeSession.drowsinessScore || 0;
-      const prevWeights = activeSession._attentionWeights || null;
       const attentionWeights = computeAttentionWeights(
         { eyeAspectRatio, mouthAspectRatio, headPitch, headYaw },
-        prevWeights
+        null
       );
 
       const sds = computeSDS(prevSDS, { eyeAspectRatio, mouthAspectRatio, headPitch, headYaw }, attentionWeights, new Date());
 
-      const severity = computeSeverity(sds, confidence);
-      const riskLevel = computeRiskLevel(sds, []);
+      const severity = computeSeverity(sds, confidence * 100);
+      const recentAlertsForRisk = await Alert.find({
+        driver: req.user._id,
+        timestamp: { $gte: new Date(Date.now() - 5 * 60 * 1000) },
+      })
+        .sort({ timestamp: -1 })
+        .limit(10);
+      const riskLevel = computeRiskLevel(sds, recentAlertsForRisk);
 
       const updateFields = {
         $inc: {
@@ -115,7 +121,6 @@ router.post('/detection', protect, async (req, res) => {
           drowsinessScore: Math.round(sds * 10) / 10,
           riskLevel,
           lastSDSUpdate: new Date(),
-          _attentionWeights: attentionWeights,
         },
         $push: {
           sdsHistory: {
@@ -132,7 +137,10 @@ router.post('/detection', protect, async (req, res) => {
       const alertStatuses = ['drowsy', 'eyes_closed', 'yawning', 'microsleep', 'high_risk', 'critical'];
       const confPct = (confidence || 0) * 100;
       const nonDrowsyThreshold = 30;
-      if (alertStatuses.includes(status) || sds > nonDrowsyThreshold) {
+      const warmupCount = activeSession.detectionCount || 0;
+      const isWarmup = warmupCount < 8;
+      if (isWarmup && status === 'yawning' && sds < 35) {
+      } else if (alertStatuses.includes(status) || sds > nonDrowsyThreshold) {
         const alertSeverity =
           status === 'critical' || sds > 85
             ? 'critical'
@@ -142,7 +150,8 @@ router.post('/detection', protect, async (req, res) => {
                 ? 'medium'
                 : 'low';
 
-        if (alertStatuses.includes(status) || alertSeverity !== 'low') {
+        if (status === 'yawning' && alertSeverity === 'low' && confPct < 65) {
+        } else if (alertStatuses.includes(status) || alertSeverity !== 'low') {
           const typeMap = { yawning: 'yawning', eyes_closed: 'eyes_closed', drowsy: 'drowsiness', microsleep: 'drowsiness', high_risk: 'drowsiness', critical: 'critical' };
           const alertData = {
             driver: req.user._id,
@@ -154,11 +163,12 @@ router.post('/detection', protect, async (req, res) => {
                 : `${status.replace('_', ' ')} detected with ${confPct.toFixed(0)}% confidence`,
           };
 
+          const dedupWindow = alertSeverity === 'critical' ? 3000 : 10000;
           const recentPending = await Alert.findOne({
             driver: req.user._id,
             isAcknowledged: false,
             isEscalated: false,
-            timestamp: { $gte: new Date(Date.now() - 30000) },
+            timestamp: { $gte: new Date(Date.now() - dedupWindow) },
           });
 
           if (!recentPending) {
@@ -172,6 +182,13 @@ router.post('/detection', protect, async (req, res) => {
                 ...alert.toObject(),
                 sds: Math.round(sds * 10) / 10,
               });
+              if (['high', 'critical'].includes(alertSeverity)) {
+                req.io.to('admin-room').emit('alert', {
+                  ...alert.toObject(),
+                  sds: Math.round(sds * 10) / 10,
+                  riskLevel,
+                });
+              }
             }
           }
         }

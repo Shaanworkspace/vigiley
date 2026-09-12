@@ -10,11 +10,12 @@ router.get('/', protect, async (req, res) => {
     if (req.user.role === 'driver') {
       filter.driver = req.user._id;
     }
-
-    const alerts = await Alert.find(filter)
-      .populate('driver', 'name email phone vehicleNumber')
-      .sort({ timestamp: -1 })
-      .limit(50);
+    const { history, status } = req.query;
+    if (status === 'acknowledged') filter.isAcknowledged = true;
+    else if (status === 'unacknowledged') filter.isAcknowledged = false;
+    else if (!history) {
+      filter.timestamp = { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) };
+    }
 
     res.json({ alerts });
   } catch (error) {
@@ -35,6 +36,11 @@ router.put('/:id/acknowledge', protect, async (req, res) => {
     alert.acknowledgedAt = new Date();
     alert.acknowledgedBy = req.user._id;
     await alert.save();
+
+    if (req.io) {
+      req.io.to(`driver-${alert.driver.toString()}`).emit('alert-acknowledged', { alertId: alert._id.toString() });
+      req.io.to('admin-room').emit('alert-acknowledged', { alertId: alert._id.toString() });
+    }
 
     res.json({ alert });
   } catch (error) {

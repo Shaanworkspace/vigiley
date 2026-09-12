@@ -25,22 +25,28 @@ export default function AlertPanel({ liveStatus }) {
   useEffect(() => { load(); return () => { if (timerRef.current) clearInterval(timerRef.current); stopAlarm(); }; }, []);
 
   useEffect(() => {
-    if (warnings.length > prevWarnLen.current) {
-      const newW = warnings.slice(0, warnings.length - prevWarnLen.current);
-      newW.forEach(w => {
-        if (w._id && !seenIds.current.has(w._id)) {
-          seenIds.current.add(w._id);
-          queue.current.push(w);
-        }
-      });
-      if (!flashRef.current && queue.current.length > 0) showNext();
-    }
+    let added = false;
+    warnings.forEach(w => {
+      if (w._id && !seenIds.current.has(w._id)) {
+        seenIds.current.add(w._id);
+        queue.current.push(w);
+        added = true;
+      }
+    });
+    if (added) load();
+    if (added && !flashRef.current && queue.current.length > 0) showNext();
+    if (warnings.length === 0) seenIds.current.clear();
     prevWarnLen.current = warnings.length;
     // eslint-disable-next-line
   }, [warnings]);
 
   const load = async () => {
-    try { const r = await alertAPI.getAlerts(); setAlerts((r.data.alerts || []).slice(0, 5)); } catch (_) { }
+    try {
+      const r = await alertAPI.getAlerts();
+      const all = r.data.alerts || [];
+      const pending = all.filter(a => !a.isAcknowledged && !a.isEscalated).sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
+      setAlerts((pending.length ? pending : all.filter(a=> !a.isAcknowledged).sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp))).slice(0, 5));
+    } catch (_) { }
   };
   const ack = async (id) => {
     try { await alertAPI.acknowledgeAlert(id); load(); } catch (_) { }

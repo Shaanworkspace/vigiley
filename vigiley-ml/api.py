@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from feature_extraction import FeatureExtractor
 from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, PERCLOS_WINDOW, \
     FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN, FRAMES_RESET
-from websocket_client import AlertWebSocketClient
 
 app = FastAPI(title='VigilEye ML API', version='2.0.0')
 
@@ -23,7 +22,6 @@ app.add_middleware(
 
 extractor = FeatureExtractor()
 detector = DrowsinessDetector()
-ws_client = AlertWebSocketClient()
 
 ear_history = []
 frame_count = 0
@@ -38,7 +36,6 @@ class PredictRequest(BaseModel):
 def health():
     return {
         'status': 'ok', 'model': 'vigiley-ml-threshold',
-        'ws_connected': ws_client.connected,
         'thresholds': {
             'ear_closed': EAR_THRESHOLD, 'ear_low': EAR_LOW,
             'mar_yawn': MAR_THRESHOLD,
@@ -83,13 +80,16 @@ def predict(req: PredictRequest):
             ear_history.clear()
             detector._recovered = False
 
-    if len(ear_history) > 300:
-        ear_history[:100] = []
+        if len(ear_history) > 300:
+            ear_history[:100] = []
 
-    perclos = 0.0
-    if ear_history:
-        window = ear_history[-min(len(ear_history), PERCLOS_WINDOW):]
-        perclos = sum(1 for e in window if e < EAR_THRESHOLD) / len(window)
+        perclos = 0.0
+        if ear_history:
+            window = ear_history[-min(len(ear_history), PERCLOS_WINDOW):]
+            perclos = sum(1 for e in window if e < EAR_THRESHOLD) / len(window)
+
+        close_counter = detector.close_counter
+        yawn_counter = detector.yawn_counter
 
     result = {
         'face_detected': True,
@@ -101,8 +101,8 @@ def predict(req: PredictRequest):
         'pitch': features['head_pitch'],
         'yaw': features['head_yaw'],
         'perclos': round(perclos, 4),
-        'close_counter': detector.close_counter,
-        'yawn_counter': detector.yawn_counter,
+        'close_counter': close_counter,
+        'yawn_counter': yawn_counter,
         'frame_id': frame_count,
         'face_box': features['face_box'],
         'eye_points': features['eye_points'],
@@ -114,10 +114,6 @@ def predict(req: PredictRequest):
             'frames_yawn': FRAMES_YAWN,
         },
     }
-
-    if state in ('drowsy', 'high_risk', 'critical') and confidence > 0.7:
-        threading.Thread(target=ws_client.send_alert, args=(result,),
-                         daemon=True).start()
 
     return result
 

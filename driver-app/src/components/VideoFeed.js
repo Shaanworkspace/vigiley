@@ -5,10 +5,10 @@ import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from '
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
 const CAPTURE_INTERVAL = 1000;
-const EAR_CLOSED = 0.28;
-const EAR_LOW = 0.34;
-const MAR_YAWN = 0.40;
-const MAR_HALF = 0.30;
+const EAR_CLOSED = 0.22;
+const EAR_LOW = 0.28;
+const MAR_YAWN = 0.50;
+const MAR_HALF = 0.35;
 
 const EAR_WARN = [
   { min: 0.34, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
@@ -100,8 +100,15 @@ export default function VideoFeed({ onStatusChange }) {
   const [noFace, setNoFace] = useState(false);
 
   const lastGood = useRef({ ear: 0.35, mar: 0.25, st: 'awake' });
+  const lastGoodTime = useRef(0);
+  const [, forceTick] = useState(0);
 
   useEffect(() => () => iv.current && clearInterval(iv.current), []);
+  useEffect(() => {
+    if (!noFace) return;
+    const t = setInterval(() => forceTick(x => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [noFace]);
 
   const detect = useCallback(async () => {
     const raw = wc.current?.getScreenshot();
@@ -130,6 +137,7 @@ export default function VideoFeed({ onStatusChange }) {
         setPerclos(d.perclos * 100); setConf(d.confidence * 100);
         setSt(d.status); setCc(d.close_counter); setYc(d.yawn_counter);
         lastGood.current = { ear: d.ear, mar: d.mar, st: d.status, cc: d.close_counter, yc: d.yawn_counter, conf: d.confidence, perclos: d.perclos };
+        lastGoodTime.current = Date.now();
         driverAPI.sendDetection({
           status: d.status,
           confidence: d.confidence,
@@ -149,8 +157,9 @@ export default function VideoFeed({ onStatusChange }) {
   const start = async () => {
     try {
       await driverAPI.startSession();
-      fetch(`${ML_API}/reset`, { method: 'POST' }).catch(() => {});
-      setSe(true); setOn(true); setNoFace(false);
+      try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
+      lastGoodTime.current = Date.now();
+      setSe(true); setOn(true); setNoFace(false); setErr('');
       setTimeout(detect, 100);
       iv.current = setInterval(detect, CAPTURE_INTERVAL);
     } catch (_) {}
@@ -158,17 +167,19 @@ export default function VideoFeed({ onStatusChange }) {
 
   const stop = async () => {
     if (iv.current) { clearInterval(iv.current); iv.current = null; }
-    setOn(false); setNoFace(false); setErr(''); setBox(null);
+    setOn(false); setNoFace(false); setErr('');
+    try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
     try { await driverAPI.endSession(); } catch (_) {}
   };
 
-  const displaySt = noFace ? lastGood.current.st : st;
-  const displayEar = noFace ? lastGood.current.ear : ear;
-  const displayMar = noFace ? lastGood.current.mar : mar;
-  const displayPl = noFace ? (lastGood.current.perclos || 0) * 100 : perclos;
-  const displayCc = noFace ? (lastGood.current.cc || 0) : cc;
-  const displayYc = noFace ? (lastGood.current.yc || 0) : yc;
-  const displayConf = noFace ? ((lastGood.current.conf || 0) * 100) : conf;
+  const isStale = noFace && Date.now() - lastGoodTime.current > 3000;
+  const displaySt = noFace ? (isStale ? 'no_face' : lastGood.current.st) : st;
+  const displayEar = noFace ? (isStale ? 0 : lastGood.current.ear) : ear;
+  const displayMar = noFace ? (isStale ? 0 : lastGood.current.mar) : mar;
+  const displayPl = noFace ? (isStale ? 0 : (lastGood.current.perclos || 0) * 100) : perclos;
+  const displayCc = noFace ? (isStale ? 0 : (lastGood.current.cc || 0)) : cc;
+  const displayYc = noFace ? (isStale ? 0 : (lastGood.current.yc || 0)) : yc;
+  const displayConf = noFace ? (isStale ? 0 : ((lastGood.current.conf || 0) * 100)) : conf;
 
   useEffect(() => {
     if (onStatusChange) onStatusChange(on && !noFace ? st : null);

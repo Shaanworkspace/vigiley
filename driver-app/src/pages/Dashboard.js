@@ -32,7 +32,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => { load(); const i = setInterval(load, 8000); return () => clearInterval(i); }, []);
+  useEffect(() => { load(); const i = setInterval(load, 3000); return () => clearInterval(i); }, []);
 
   const load = async () => {
     try { const r = await driverAPI.getDashboard(); setData(r.data); } catch (_) { } finally { setLoading(false); }
@@ -66,7 +66,7 @@ export default function Dashboard() {
             {data.hourlyBreakdown.slice(0, 3).map((h, i) => (
               <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Hour {h._id || i + 1}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{h.count || 0}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{h.total || 0}</div>
                 <div style={{ fontSize: 10, color: '#475569' }}>events</div>
               </div>
             ))}
@@ -147,7 +147,7 @@ export default function Dashboard() {
                         borderRadius: 14, padding: 16, backdropFilter: 'blur(8px)'
                       }}>
                         <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Hour {h._id || i + 1}</div>
-                        <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{h.count || 0}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{h.total || 0}</div>
                         <div style={{ fontSize: 11, color: '#475569' }}>events</div>
                       </div>
                     ))}

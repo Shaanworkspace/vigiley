@@ -59,7 +59,6 @@ export const driverAPI = {
   sendDetection: (data) => api.post('/driver/detection', data, { _noLoading: true }),
   startSession: () => api.post('/driver/session/start'),
   endSession: () => api.post('/driver/session/end'),
-  getSessions: () => api.get('/driver/sessions', { _noLoading: true }),
 };
 
 export const alertAPI = {

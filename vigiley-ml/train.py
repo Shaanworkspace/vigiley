@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import json
-from model import DrowsinessDetector, EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, \
+from model import EAR_THRESHOLD, EAR_LOW, MAR_THRESHOLD, \
     FRAMES_CLOSED, FRAMES_MICRO, FRAMES_DROWSY, FRAMES_CRITICAL, FRAMES_YAWN
 
 FEATURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets', 'features.npz')

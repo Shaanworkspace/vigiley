@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import time
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe import Image, ImageFormat
@@ -102,7 +101,7 @@ class FeatureExtractor:
         if ear_history is not None:
             ear_history.append(ear)
             if len(ear_history) >= 10:
-                window = ear_history[-min(len(ear_history), 90):]
+                window = ear_history[-min(len(ear_history), 60):]
                 closed = sum(1 for e in window if e < EAR_THRESHOLD)
                 perclos = closed / len(window)
 

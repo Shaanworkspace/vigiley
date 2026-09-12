@@ -103,9 +103,4 @@ module.exports = {
   computeAttentionWeights,
   computeSeverity,
   computeRiskLevel,
-  normalizeEAR,
-  normalizeMAR,
-  normalizePitch,
-  normalizeYaw,
-  SDS_DECAY_FACTOR,
 };
