@@ -1,4 +1,4 @@
-const SDS_DECAY_FACTOR = 0.95;
+const SDS_DECAY_FACTOR = 0.80;
 const EAR_BASELINE = 0.25;
 const MAR_BASELINE = 0.15;
 const PITCH_BASELINE = 0;
@@ -91,10 +91,9 @@ function computeSeverity(sds, confidence) {
 function computeRiskLevel(sds, recentAlerts) {
   const criticalCount = recentAlerts.filter((a) => a.severity === 'critical').length;
   const highCount = recentAlerts.filter((a) => a.severity === 'high').length;
-
-  if (sds > 80 || criticalCount > 3) return 'critical';
-  if (sds > 60 || highCount > 5) return 'high';
-  if (sds > 35) return 'medium';
+  if (sds > 60 || criticalCount >= 2) return 'critical';
+  if (sds > 35 || highCount >= 3) return 'high';
+  if (sds > 15) return 'medium';
   return 'low';
 }
 

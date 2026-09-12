@@ -5,7 +5,7 @@ const detectionLogSchema = new mongoose.Schema(
     driver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     status: {
       type: String,
-      enum: ['normal', 'yawning', 'eyes_closed', 'drowsy', 'distracted'],
+      enum: ['normal', 'yawning', 'eyes_closed', 'drowsy', 'distracted', 'awake', 'heavy_eyelids', 'mouth_open', 'microsleep', 'high_risk', 'critical', 'no_face'],
       required: true,
     },
     confidence: { type: Number, min: 0, max: 100, default: 0 },

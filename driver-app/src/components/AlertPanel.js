@@ -5,8 +5,8 @@ import { Bell, CheckCircle, Clock, AlertTriangle, ShieldCheck, Siren, Volume2 } 
 import { startAlarm, stopAlarm } from '../utils/alarm';
 
 const SV = { critical: { bg: 'rgba(239,68,68,0.1)', dot: '#ef4444' }, high: { bg: 'rgba(234,88,12,0.1)', dot: '#ea580c' }, medium: { bg: 'rgba(245,158,11,0.1)', dot: '#f59e0b' }, low: { bg: 'rgba(59,130,246,0.08)', dot: '#3b82f6' } };
-const COUNTDOWN_SECONDS = 5;
-const ACCEPT_SECONDS = 5;
+const COUNTDOWN_SECONDS = 3;
+const ACCEPT_SECONDS = 2;
 const ALARM_ESCALATE_SECONDS = 10;
 
 export default function AlertPanel({ liveStatus }) {
@@ -81,6 +81,14 @@ export default function AlertPanel({ liveStatus }) {
   const showNext = () => {
     const next = queue.current.shift();
     if (!next) return;
+    // First 2 alerts (needsCountdown false) -> simple alert, no countdown, auto-dismiss in 2s
+    if (next.needsCountdown === false) {
+      flashRef.current = next;
+      setFlash(next);
+      setPhase('simple');
+      setTimeout(() => { ack(next._id); dismiss(); }, 2000);
+      return;
+    }
     flashRef.current = next;
     setFlash(next);
     phaseRef.current = 'countdown';
@@ -173,6 +181,13 @@ export default function AlertPanel({ liveStatus }) {
       </div>
       </div>
 
+      {flash && phase === 'simple' && (
+        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 9998, background: 'rgba(15,23,42,0.95)', border: `1px solid ${v.dot}55`, borderRadius: 12, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: `0 10px 30px rgba(0,0,0,0.5)` }}>
+          <AlertTriangle size={18} color={v.dot} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{flash.type?.replace(/_/g, ' ')} - {flash.message?.slice(0,40)}</span>
+          <span style={{ fontSize: 10, color: '#64748b' }}>alert {flash.alertCount}/2</span>
+        </div>
+      )}
       {flash && phase === 'countdown' && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9998,

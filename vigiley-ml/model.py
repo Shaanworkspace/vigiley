@@ -67,19 +67,19 @@ Based on well-known published research:
 ================================================================================
 """
 
-EAR_THRESHOLD = 0.22
+EAR_THRESHOLD = 0.24
 EAR_LOW = 0.28
-MAR_THRESHOLD = 0.50
-MAR_HALF = 0.35
+MAR_THRESHOLD = 0.44
+MAR_HALF = 0.34
 PERCLOS_WINDOW = 60
 PERCLOS_RISK = 0.35
 
 FRAMES_CLOSED = 1
 FRAMES_MICRO = 2
-FRAMES_DROWSY = 4
-FRAMES_CRITICAL = 6
-FRAMES_YAWN = 4
-FRAMES_RESET = 5
+FRAMES_DROWSY = 6
+FRAMES_CRITICAL = 8
+FRAMES_YAWN = 2
+FRAMES_RESET = 2
 
 
 class DrowsinessDetector:
@@ -113,10 +113,11 @@ class DrowsinessDetector:
         mar = sum(self.mar_history) / len(self.mar_history) if len(self.mar_history) >= 2 else mar_raw
         perclos = self._calc_perclos(ear_history or self.ear_history)
 
-        eyes_closed = ear < EAR_THRESHOLD
-        heavy_lids = EAR_LOW > ear >= EAR_THRESHOLD
-        half_mouth = mar > MAR_HALF
-        mouth_open = mar > MAR_THRESHOLD
+        # Use raw for immediate eye close (harsh reality: smoothing diluted 0.25 with 0.35 -> 0.31 not closed)
+        eyes_closed = ear_raw < EAR_THRESHOLD
+        heavy_lids = EAR_LOW > ear_raw >= EAR_THRESHOLD
+        half_mouth = mar_raw > MAR_HALF
+        mouth_open = mar_raw > MAR_THRESHOLD
         yawn_combo = half_mouth and heavy_lids
 
         if eyes_closed:
@@ -135,6 +136,12 @@ class DrowsinessDetector:
                 self.close_counter = 0
                 self.yawn_counter = 0
                 self._recovered = True
+
+        # Yawning confirmed - check before critical when MAR high (user wants yawning countdown at 0.23/0.60)
+        if self.yawn_counter >= FRAMES_YAWN:
+            self.current_state = 'yawning'
+            conf = min(0.40 + self.yawn_counter / 180 + 0.2, 0.85)
+            return 0, round(conf, 4)
 
         # Critical — 5s+ sustained closure OR PERCLOS > 50%
         if self.close_counter >= FRAMES_CRITICAL or perclos > 0.50:
@@ -159,12 +166,6 @@ class DrowsinessDetector:
             self.current_state = 'microsleep'
             conf = min(0.45 + self.close_counter / 200, 0.75)
             return 1, round(conf, 4)
-
-        # Yawning confirmed
-        if self.yawn_counter >= FRAMES_YAWN:
-            self.current_state = 'yawning'
-            conf = min(0.40 + self.yawn_counter / 180 + 0.2, 0.85)
-            return 0, round(conf, 4)
 
         # Eyes closed (partial duration)
         if eyes_closed and self.close_counter >= FRAMES_CLOSED:

@@ -4,27 +4,29 @@ import { driverAPI } from '../services/api';
 import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from 'lucide-react';
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
-const CAPTURE_INTERVAL = 1000;
-const EAR_CLOSED = 0.22;
-const EAR_LOW = 0.28;
-const MAR_YAWN = 0.50;
-const MAR_HALF = 0.35;
+const CAPTURE_INTERVAL = 500;
+// Fixed as per user: EAR 0.22/0.23 and MAR 45
+let EAR_CLOSED = 0.23;
+let EAR_LOW = 0.28;
+let MAR_YAWN = 0.45;
+let MAR_HALF = 0.35;
 
-const EAR_WARN = [
-  { min: 0.34, max: 99, msg: ['Eyes alert and open', 'Normal eye openness', 'Eyes wide — good'], lv: 0 },
-  { min: 0.31, max: 0.34, msg: ['Your eyelids are drooping — stay focused!', 'Keep your eyes wide open!', 'Stay alert! Dont let your eyes close!', 'Eyelids heavy — shift your attention!', 'Drowsiness starting — fight it!'], lv: 1 },
-  { min: 0.28, max: 0.31, msg: ['Eyes getting heavy! Wake up!', 'Open your eyes wider!', 'Dont close your eyes! Stay with us!', 'Heavy eyelids detected! Move around!', 'Blink fully — keep eyes wide!'], lv: 2 },
-  { min: 0.22, max: 0.28, msg: ['Open your eyes NOW!', 'Eyes closing — snap out of it!', 'Stay awake! Open your eyes!', 'DROWSINESS DETECTED! Wake up!', 'Your eyes are shutting! Fight it!'], lv: 3 },
-  { min: 0.15, max: 0.22, msg: ['EYES ALMOST CLOSED! WAKE UP!', 'CRITICAL: Open your eyes immediately!', 'You are falling asleep! WAKE UP!', 'DANGER: Eyes closing rapidly!', 'ALERT: Microsleep starting! Open eyes!'], lv: 4 },
-  { min: -999, max: 0.15, msg: ['WAKE UP! YOUR EYES ARE CLOSED!', 'EMERGENCY! Open eyes NOW!', 'CRITICAL: Eyes closed — PULL OVER!', 'DANGER: You are not watching the road!', 'SYSTEM ALERT: Eyes shut for too long!'], lv: 5 },
-];
-
-const MAR_WARN = [
-  { min: 0.30, max: 0.40, msg: ['Mouth opening — are you yawning?', 'Close your mouth gently', 'Yawning starting — take a deep breath', 'Mouth slightly open — stay aware', 'Early yawn detected — rest soon'], lv: 1 },
-  { min: 0.40, max: 0.55, msg: ['Close your mouth! Yawning detected!', 'Yawning = fatigue! Take a break!', 'Excessive yawning — rest needed!', 'You are yawning — pull over soon!', 'Close your mouth and stretch!'], lv: 2 },
-  { min: 0.55, max: 99, msg: ['HEAVY YAWNING! REST IMMEDIATELY!', 'Repeated yawning = drowsy! Take a break!', 'CRITICAL: Excessive yawning — stop driving!', 'DANGER: Yawning means fatigue! Rest now!', 'ALERT: Your body needs rest — pull over!'], lv: 3 },
-  { min: -999, max: 0.30, msg: ['Mouth closed — good', 'Normal mouth position', 'Lips sealed — correct'], lv: 0 },
-];
+function getEarWarn() {
+  return [
+    { min: EAR_LOW - 0.02, max: 99, msg: ['Eyes alert and open'], lv: 0 },
+    { min: EAR_CLOSED + 0.02, max: EAR_LOW - 0.02, msg: ['Eyelids a bit heavy - stay focused!'], lv: 1 },
+    { min: EAR_CLOSED, max: EAR_CLOSED + 0.02, msg: ['Eyes getting heavy! Wake up!'], lv: 2 },
+    { min: EAR_CLOSED - 0.07, max: EAR_CLOSED, msg: ['Open your eyes NOW!'], lv: 3 },
+    { min: -999, max: EAR_CLOSED - 0.07, msg: ['WAKE UP! EYES CLOSED!'], lv: 5 },
+  ];
+}
+function getMarWarn() {
+  return [
+    { min: -999, max: MAR_YAWN - 0.10, msg: ['Mouth closed - good'], lv: 0 },
+    { min: MAR_YAWN - 0.10, max: MAR_YAWN, msg: ['Mouth slightly open - stay aware'], lv: 1 },
+    { min: MAR_YAWN, max: 99, msg: ['Yawning detected! Take break!'], lv: 2 },
+  ];
+}
 
 const PERCLOS_WARN = [
   { min: 0, max: 10, msg: ['Eyes staying open — good', 'Normal eye closure rate', 'Blink rate healthy'], lv: 0 },
@@ -86,6 +88,7 @@ function WarningBar({ label, value, warns }) {
 export default function VideoFeed({ onStatusChange }) {
   const wc = useRef(null);
   const iv = useRef(null);
+  const sendTimerRef = useRef(null);
   const [on, setOn] = useState(false);
   const [se, setSe] = useState(false);
 
@@ -101,8 +104,25 @@ export default function VideoFeed({ onStatusChange }) {
 
   const lastGood = useRef({ ear: 0.35, mar: 0.25, st: 'awake' });
   const lastGoodTime = useRef(0);
+  const calibEar = useRef([]);
+  const calibMar = useRef([]);
+  const [calibrating, setCalibrating] = useState(false);
+  const calibratingRef = useRef(false);
+  const [calibCount, setCalibCount] = useState(8);
+  const busy = useRef(false);
+  const calibIntervalRef = useRef(null);
   const [, forceTick] = useState(0);
 
+  // Load saved calibration (persistence - related enhancement)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vigiley-calib');
+      if (saved) {
+        const { ec, el, my, mh } = JSON.parse(saved);
+        if (ec && el && my && mh) { EAR_CLOSED = ec; EAR_LOW = el; MAR_YAWN = my; MAR_HALF = mh; }
+      }
+    } catch {}
+  }, []);
   useEffect(() => () => iv.current && clearInterval(iv.current), []);
   useEffect(() => {
     if (!noFace) return;
@@ -111,8 +131,10 @@ export default function VideoFeed({ onStatusChange }) {
   }, [noFace]);
 
   const detect = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
     const raw = wc.current?.getScreenshot();
-    if (!raw) return;
+    if (!raw) { busy.current = false; return; }
     try {
       let imgData = raw.split(',')[1];
       if (imgData.length > 80000) {
@@ -132,6 +154,20 @@ export default function VideoFeed({ onStatusChange }) {
       if (!res.ok) return;
       const d = await res.json();
       if (d.face_detected) {
+        if (calibratingRef.current && calibEar.current.length < 8) {
+          calibEar.current.push(d.ear);
+          calibMar.current.push(d.mar);
+          if (calibEar.current.length >= 8) {
+            const avgEar = calibEar.current.reduce((a,b)=>a+b,0)/calibEar.current.length;
+            const avgMar = calibMar.current.reduce((a,b)=>a+b,0)/calibMar.current.length;
+            EAR_CLOSED = Math.max(0.19, Math.min(0.28, avgEar * 0.75));
+            EAR_LOW = EAR_CLOSED + 0.06;
+            MAR_YAWN = Math.max(0.45, Math.min(0.60, avgMar * 1.6));
+            MAR_HALF = MAR_YAWN - 0.15;
+            try { localStorage.setItem('vigiley-calib', JSON.stringify({ ec: EAR_CLOSED, el: EAR_LOW, my: MAR_YAWN, mh: MAR_HALF })); } catch {}
+            setCalibrating(false); calibratingRef.current = false; setCalibCount(0); clearInterval(calibIntervalRef.current);
+          }
+        }
         setNoFace(false);
         setEar(d.ear); setMar(d.mar);
         setPerclos(d.perclos * 100); setConf(d.confidence * 100);
@@ -151,15 +187,30 @@ export default function VideoFeed({ onStatusChange }) {
         setNoFace(true);
         setErr('Face lost — stay in camera view');
       }
-    } catch { setErr('ML API unavailable'); }
-  }, []);
+    } catch { setErr('ML API unavailable'); } finally { busy.current = false; }
+  }, [calibrating]);
 
   const start = async () => {
     try {
       await driverAPI.startSession();
       try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
       lastGoodTime.current = Date.now();
-      setSe(true); setOn(true); setNoFace(false); setErr('');
+      calibEar.current = []; calibMar.current = [];
+      setSe(true); setOn(true); setNoFace(false); setErr(''); setCalibrating(true); calibratingRef.current = true; setCalibCount(8);
+      let cnt = 8;
+      calibIntervalRef.current = setInterval(() => { cnt -= 1; setCalibCount(cnt); if (cnt <= 0) clearInterval(calibIntervalRef.current); }, 1000);
+      setTimeout(() => {
+        if (calibratingRef.current && calibEar.current.length >= 5) {
+          const avgEar = calibEar.current.reduce((a,b)=>a+b,0)/calibEar.current.length;
+          const avgMar = calibMar.current.reduce((a,b)=>a+b,0)/calibMar.current.length;
+          EAR_CLOSED = Math.max(0.19, Math.min(0.28, avgEar * 0.75));
+          EAR_LOW = EAR_CLOSED + 0.06;
+          MAR_YAWN = Math.max(0.45, Math.min(0.60, avgMar * 1.6));
+          MAR_HALF = MAR_YAWN - 0.15;
+          try { localStorage.setItem('vigiley-calib', JSON.stringify({ ec: EAR_CLOSED, el: EAR_LOW, my: MAR_YAWN, mh: MAR_HALF, avgEar, avgMar })); } catch {}
+        }
+        setCalibrating(false); calibratingRef.current = false; clearInterval(calibIntervalRef.current);
+      }, 8000);
       setTimeout(detect, 100);
       iv.current = setInterval(detect, CAPTURE_INTERVAL);
     } catch (_) {}
@@ -167,7 +218,9 @@ export default function VideoFeed({ onStatusChange }) {
 
   const stop = async () => {
     if (iv.current) { clearInterval(iv.current); iv.current = null; }
-    setOn(false); setNoFace(false); setErr('');
+    if (calibIntervalRef.current) clearInterval(calibIntervalRef.current);
+    setOn(false); setNoFace(false); setErr(''); setCalibrating(false); calibratingRef.current = false;
+    calibEar.current = []; calibMar.current = [];
     try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
     try { await driverAPI.endSession(); } catch (_) {}
   };
@@ -180,6 +233,18 @@ export default function VideoFeed({ onStatusChange }) {
   const displayCc = noFace ? (isStale ? 0 : (lastGood.current.cc || 0)) : cc;
   const displayYc = noFace ? (isStale ? 0 : (lastGood.current.yc || 0)) : yc;
   const displayConf = noFace ? (isStale ? 0 : ((lastGood.current.conf || 0) * 100)) : conf;
+
+  // Keep refs for sendTimer to avoid recreating interval on every st change (harsh fix for Detections 0)
+  const stRef = useRef(st); const confRef = useRef(conf); const earRef = useRef(ear); const marRef = useRef(mar); const perclosRef = useRef(perclos); const noFaceRef = useRef(noFace);
+  useEffect(() => { stRef.current = st; confRef.current = conf; earRef.current = ear; marRef.current = mar; perclosRef.current = perclos; noFaceRef.current = noFace; }, [st, conf, ear, mar, perclos, noFace]);
+  useEffect(() => {
+    if (!on) { if (sendTimerRef.current) clearInterval(sendTimerRef.current); return; }
+    sendTimerRef.current = setInterval(() => {
+      if (noFaceRef.current) return;
+      driverAPI.sendDetection({ status: stRef.current, confidence: confRef.current/100, eyeAspectRatio: earRef.current, mouthAspectRatio: marRef.current, headPitch: 0, headYaw: 0, perclos: perclosRef.current/100 }).catch(()=>{});
+    }, 1000);
+    return () => clearInterval(sendTimerRef.current);
+  }, [on]);
 
   useEffect(() => {
     if (onStatusChange) onStatusChange(on && !noFace ? st : null);
@@ -233,7 +298,7 @@ export default function VideoFeed({ onStatusChange }) {
           </div>
         )}
 
-        {on && !noFace && isAlert && (
+        {on && !noFace && isAlert && !calibrating && (
           <div style={{
             position: 'absolute', inset: 0, zIndex: 5,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -247,6 +312,20 @@ export default function VideoFeed({ onStatusChange }) {
             }}>
               {pick(STATE_WARN[displaySt] || [displaySt])}
             </div>
+          </div>
+        )}
+
+        {on && calibrating && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 5,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(2,6,23,0.88)', backdropFilter: 'blur(2px)',
+          }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#38bdf8' }}>{calibCount}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8', letterSpacing: '1px' }}>CALIBRATING... {calibCount}s</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, textAlign: 'center', padding: '0 20px' }}>Keep face centered - learning your baseline<br/>Personalized 75% rule - {Math.min(calibEar.current.length,8)}/8 samples</div>
+            <div style={{ marginTop: 8, width: 140, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}><div style={{ height: '100%', width: `${(8-calibCount)/8*100}%`, background: '#38bdf8', transition: 'width 0.5s' }} /></div>
+            <div style={{ marginTop: 6, fontSize: 10, color: '#64748b' }}>{Math.min(calibEar.current.length,8)}/8 {calibEar.current.length>=5 ? '✓ ready' : '...'}</div>
           </div>
         )}
 
@@ -304,9 +383,16 @@ export default function VideoFeed({ onStatusChange }) {
 
       {on && (
         <div className="vf-extra" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <WarningBar label="Eyes (EAR)" value={displayEar} warns={EAR_WARN} />
-          <WarningBar label="Mouth (MAR)" value={displayMar} warns={MAR_WARN} />
+          <WarningBar label="Eyes (EAR)" value={displayEar} warns={getEarWarn()} />
+          <WarningBar label="Mouth (MAR)" value={displayMar} warns={getMarWarn()} />
           <WarningBar label="Fatigue (PERCLOS)" value={displayPl} warns={PERCLOS_WARN} />
+          {/* Related: show personalized thresholds + recalibrate (one tap) */}
+          {!calibrating && on && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 6, background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)' }}>
+              <span style={{ fontSize: 9, color: '#7dd3fc' }}>Your baseline: EAR {EAR_CLOSED.toFixed(2)}-{EAR_LOW.toFixed(2)} MAR {MAR_YAWN.toFixed(2)}</span>
+              <button onClick={() => { calibEar.current=[]; calibMar.current=[]; setCalibrating(true); setTimeout(()=>setCalibrating(false),8000); }} style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}>Recalibrate</button>
+            </div>
+          )}
 
           {noFace && (
             <div style={{
@@ -338,7 +424,14 @@ export default function VideoFeed({ onStatusChange }) {
 
           <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>EYES: {displayCc}f / 90f</div>
+              <div style={{ fontSize: 9, color: '#38bdf8', marginBottom: 1, fontWeight: 700 }}>CONF: {displayConf.toFixed(0)}% {displayConf>8?'🔴':''}</div>
+              <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden', border: displayConf>8?'1px solid #38bdf8':'' }}>
+                <div style={{ height: '100%', background: displayConf > 70 ? LV[4] : displayConf > 8 ? LV[2] : LV[0], width: `${displayConf}%`, transition: 'width 0.2s' }} />
+              </div>
+              <div style={{ fontSize: 7, color: '#64748b', textAlign: 'center' }}>threshold 8</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>EYES (I): {displayCc}f / 90f</div>
               <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ height: '100%', background: LV[4], width: `${Math.min(displayCc / 90 * 100, 100)}%`, transition: 'width 0.2s' }} />
               </div>
@@ -347,12 +440,6 @@ export default function VideoFeed({ onStatusChange }) {
               <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>YAWN: {displayYc}f / 15f</div>
               <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ height: '100%', background: LV[2], width: `${Math.min(displayYc / 15 * 100, 100)}%`, transition: 'width 0.2s' }} />
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, color: '#64748b', marginBottom: 1 }}>CONF: {displayConf.toFixed(0)}%</div>
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: displayConf > 70 ? LV[4] : displayConf > 40 ? LV[2] : LV[0], width: `${displayConf}%`, transition: 'width 0.2s' }} />
               </div>
             </div>
           </div>
