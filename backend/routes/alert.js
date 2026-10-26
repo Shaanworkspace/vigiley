@@ -17,6 +17,11 @@ router.get('/', protect, async (req, res) => {
       filter.timestamp = { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) };
     }
 
+    const alerts = await Alert.find(filter)
+      .populate('driver', 'name email phone vehicleNumber')
+      .sort({ timestamp: -1 })
+      .limit(50);
+
     res.json({ alerts });
   } catch (error) {
     res.status(500).json({ message: error.message });

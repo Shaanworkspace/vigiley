@@ -38,7 +38,10 @@ class FeatureExtractor:
 
         left_ear = eye_aspect_ratio(left_eye)
         right_ear = eye_aspect_ratio(right_eye)
-        return (left_ear + right_ear) / 2.0
+        # Per-eye values are returned separately (not just the mean) so that
+        # calibration can detect single-eye impairment (blindness/ptosis):
+        # a consistently closed/low eye must not trigger false drowsiness.
+        return (left_ear + right_ear) / 2.0, left_ear, right_ear
 
     def compute_mar(self, landmarks, img_w, img_h):
         upper = np.array([[landmarks[i].x * img_w, landmarks[i].y * img_h] for i in [13, 14]])
@@ -93,7 +96,7 @@ class FeatureExtractor:
         landmarks = result.face_landmarks[0]
         h, w = frame.shape[:2]
 
-        ear = self.compute_ear(landmarks, w, h)
+        ear, left_ear, right_ear = self.compute_ear(landmarks, w, h)
         mar = self.compute_mar(landmarks, w, h)
         pitch, yaw = self.compute_head_pose(landmarks, w, h)
 
@@ -119,6 +122,8 @@ class FeatureExtractor:
 
         return {
             'eye_aspect_ratio': round(ear, 4),
+            'left_ear': round(float(left_ear), 4),
+            'right_ear': round(float(right_ear), 4),
             'mouth_aspect_ratio': round(mar, 4),
             'head_pitch': round(pitch, 2),
             'head_yaw': round(yaw, 2),

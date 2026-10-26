@@ -59,6 +59,8 @@ export const driverAPI = {
   sendDetection: (data) => api.post('/driver/detection', data, { _noLoading: true }),
   startSession: () => api.post('/driver/session/start'),
   endSession: () => api.post('/driver/session/end'),
+  getCalibration: () => api.get('/driver/calibration', { _noLoading: true }),
+  saveCalibration: (data) => api.put('/driver/calibration', data, { _noLoading: true }),
 };
 
 export const alertAPI = {

@@ -10,6 +10,78 @@ let EAR_CLOSED = 0.23;
 let EAR_LOW = 0.28;
 let MAR_YAWN = 0.45;
 let MAR_HALF = 0.35;
+// Impairment-aware modality gating (medical edge cases).
+// EYES_MODE: 'both' | 'left' | 'right' | 'none' — single healthy eye when the
+// other is impaired (blindness/ptosis). MOUTH_ENABLED false = mouth baseline
+// permanently open (medical) — yawning disabled, no false yawns.
+let EYES_MODE = 'both';
+let MOUTH_ENABLED = true;
+// True once a valid personalized profile is loaded or freshly calibrated.
+// start() skips the 8s calibration when this is set.
+let HAS_CALIBRATION = false;
+
+// Persist one calibration result in three places (Flaw 2A fix):
+// 1) module vars for instant UI use, 2) localStorage for offline,
+// 3) backend per-driver profile so it is reused on every login.
+function persistCalibration(p) {
+  EAR_CLOSED = p.earClosed;
+  EAR_LOW = p.earLow;
+  MAR_YAWN = p.marYawn;
+  MAR_HALF = p.marHalf;
+  EYES_MODE = p.eyesMode;
+  MOUTH_ENABLED = p.mouthEnabled;
+  HAS_CALIBRATION = true;
+  try { localStorage.setItem('vigiley-calib', JSON.stringify({ ec: p.earClosed, el: p.earLow, my: p.marYawn, mh: p.marHalf, avgEar: p.avgEar, avgMar: p.avgMar, em: p.eyesMode, me: p.mouthEnabled })); } catch {}
+  driverAPI.saveCalibration({
+    earClosed: p.earClosed, earLow: p.earLow,
+    marYawn: p.marYawn, marHalf: p.marHalf, avgEar: p.avgEar, avgMar: p.avgMar,
+    eyesMode: p.eyesMode, mouthEnabled: p.mouthEnabled,
+    leftAvgEar: p.leftAvgEar, rightAvgEar: p.rightAvgEar,
+    quality: { samples: p.samples, faceRatio: p.faceRatio },
+  }).catch(() => {});
+}
+
+// Analyze raw calibration samples into a per-driver profile.
+// Own contribution: impairment-aware gating.
+//  - One eye near-shut while the other is clearly open (blindness/ptosis) →
+//    single-eye mode on the healthy eye (cf. You et al. 2019: EAR varies with
+//    eye size; intra-driver open-eye L/R agree, so large asymmetry = impairment).
+//  - Resting mouth already near/past the yawn band (medical) → yawning
+//    disabled, else every frame would false-trigger (talking-vs-yawning
+//    confound; cf. Abtahi et al. 2014 YawDD).
+function analyzeCalibration(earArr, leftArr, rightArr, marArr, faceRatio) {
+  const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  if (!earArr.length || earArr.length < 5 || faceRatio < 0.5) {
+    return { failed: 'Calibration unclear — keep eyes open, face centered, retry' };
+  }
+  const avgEar = avg(earArr);
+  const avgMar = avg(marArr);
+  const avgL = leftArr.length ? avg(leftArr) : avgEar;
+  const avgR = rightArr.length ? avg(rightArr) : avgEar;
+  const better = Math.max(avgL, avgR);
+  const worse = Math.min(avgL, avgR);
+  if (better < 0.18) {
+    return { failed: 'Eyes looked closed during calibration — keep eyes open and retry' };
+  }
+  let eyesMode = 'both';
+  if ((worse < 0.15 && better > 0.22) || (better > 0.22 && worse / better < 0.5)) {
+    eyesMode = avgR >= avgL ? 'right' : 'left';
+  }
+  const mouthEnabled = avgMar <= 0.38;
+  const base = eyesMode === 'both' ? avgEar : better;
+  const earClosed = Math.max(0.19, Math.min(0.28, base * 0.75));
+  const marYawn = Math.max(0.45, Math.min(0.60, avgMar * 1.6));
+  return {
+    earClosed,
+    earLow: earClosed + 0.06,
+    marYawn,
+    marHalf: marYawn - 0.15,
+    avgEar, avgMar,
+    leftAvgEar: avgL, rightAvgEar: avgR,
+    eyesMode, mouthEnabled,
+    samples: earArr.length, faceRatio,
+  };
+}
 
 function getEarWarn() {
   return [
@@ -100,28 +172,62 @@ export default function VideoFeed({ onStatusChange }) {
   const [cc, setCc] = useState(0);
   const [yc, setYc] = useState(0);
   const [err, setErr] = useState('');
+  const [errCritical, setErrCritical] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [noFace, setNoFace] = useState(false);
 
   const lastGood = useRef({ ear: 0.35, mar: 0.25, st: 'awake' });
   const lastGoodTime = useRef(0);
   const calibEar = useRef([]);
   const calibMar = useRef([]);
+  const calibLeft = useRef([]);
+  const calibRight = useRef([]);
+  const calibTicks = useRef(0);
   const [calibrating, setCalibrating] = useState(false);
   const calibratingRef = useRef(false);
   const [calibCount, setCalibCount] = useState(8);
+  const [hasCalibration, setHasCalibration] = useState(false);
   const busy = useRef(false);
   const calibIntervalRef = useRef(null);
   const [, forceTick] = useState(0);
 
-  // Load saved calibration (persistence - related enhancement)
+  // Load saved calibration: backend per-driver profile first (reused every
+  // login), localStorage as offline fallback (Flaw 2A fix).
+  // Module vars reset first so a previous driver's values never leak in.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('vigiley-calib');
-      if (saved) {
-        const { ec, el, my, mh } = JSON.parse(saved);
-        if (ec && el && my && mh) { EAR_CLOSED = ec; EAR_LOW = el; MAR_YAWN = my; MAR_HALF = mh; }
-      }
-    } catch {}
+    let cancelled = false;
+    EAR_CLOSED = 0.23; EAR_LOW = 0.28; MAR_YAWN = 0.45; MAR_HALF = 0.35;
+    EYES_MODE = 'both'; MOUTH_ENABLED = true;
+    HAS_CALIBRATION = false;
+    (async () => {
+      try {
+        if (localStorage.getItem('token')) {
+          const { data } = await driverAPI.getCalibration();
+          const c = data && data.calibration;
+          if (c && c.earClosed && c.earLow && c.marYawn && c.marHalf && !cancelled) {
+            EAR_CLOSED = c.earClosed; EAR_LOW = c.earLow; MAR_YAWN = c.marYawn; MAR_HALF = c.marHalf;
+            if (['both', 'left', 'right', 'none'].includes(c.eyesMode)) EYES_MODE = c.eyesMode;
+            if (c.mouthEnabled === false) MOUTH_ENABLED = false;
+            HAS_CALIBRATION = true; setHasCalibration(true);
+            try { localStorage.setItem('vigiley-calib', JSON.stringify({ ec: c.earClosed, el: c.earLow, my: c.marYawn, mh: c.marHalf, em: EYES_MODE, me: MOUTH_ENABLED })); } catch {}
+            return;
+          }
+        }
+      } catch {}
+      try {
+        const saved = localStorage.getItem('vigiley-calib');
+        if (saved) {
+          const { ec, el, my, mh, em, me } = JSON.parse(saved);
+          if (!cancelled && ec && el && my && mh) {
+            EAR_CLOSED = ec; EAR_LOW = el; MAR_YAWN = my; MAR_HALF = mh;
+            if (['both', 'left', 'right', 'none'].includes(em)) EYES_MODE = em;
+            if (me === false) MOUTH_ENABLED = false;
+            HAS_CALIBRATION = true; setHasCalibration(true);
+          }
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
   }, []);
   useEffect(() => () => iv.current && clearInterval(iv.current), []);
   useEffect(() => {
@@ -149,23 +255,29 @@ export default function VideoFeed({ onStatusChange }) {
       const res = await fetch(`${ML_API}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imgData }),
+        // Per-driver calibrated thresholds ride along so the DETECTOR
+        // (not just the UI) uses them (Flaw 2A fix).
+        body: JSON.stringify({
+          image: imgData,
+          ear_closed: EAR_CLOSED,
+          ear_low: EAR_LOW,
+          mar_yawn: MAR_YAWN,
+          mar_half: MAR_HALF,
+          eyes_mode: EYES_MODE,
+          mouth_enabled: MOUTH_ENABLED,
+        }),
       });
       if (!res.ok) return;
       const d = await res.json();
+      if (calibratingRef.current) calibTicks.current += 1;
       if (d.face_detected) {
         if (calibratingRef.current && calibEar.current.length < 8) {
           calibEar.current.push(d.ear);
           calibMar.current.push(d.mar);
+          if (typeof d.left_ear === 'number') calibLeft.current.push(d.left_ear);
+          if (typeof d.right_ear === 'number') calibRight.current.push(d.right_ear);
           if (calibEar.current.length >= 8) {
-            const avgEar = calibEar.current.reduce((a,b)=>a+b,0)/calibEar.current.length;
-            const avgMar = calibMar.current.reduce((a,b)=>a+b,0)/calibMar.current.length;
-            EAR_CLOSED = Math.max(0.19, Math.min(0.28, avgEar * 0.75));
-            EAR_LOW = EAR_CLOSED + 0.06;
-            MAR_YAWN = Math.max(0.45, Math.min(0.60, avgMar * 1.6));
-            MAR_HALF = MAR_YAWN - 0.15;
-            try { localStorage.setItem('vigiley-calib', JSON.stringify({ ec: EAR_CLOSED, el: EAR_LOW, my: MAR_YAWN, mh: MAR_HALF })); } catch {}
-            setCalibrating(false); calibratingRef.current = false; setCalibCount(0); clearInterval(calibIntervalRef.current);
+            finishCalibration();
           }
         }
         setNoFace(false);
@@ -190,30 +302,76 @@ export default function VideoFeed({ onStatusChange }) {
     } catch { setErr('ML API unavailable'); } finally { busy.current = false; }
   }, [calibrating]);
 
+  // Analyze collected samples; persist on success, show guidance on failure.
+  // Returns true when a usable profile was saved.
+  const finishCalibration = () => {
+    const ticks = Math.max(1, calibTicks.current);
+    const faceRatio = calibEar.current.length / ticks;
+    const profile = analyzeCalibration(
+      calibEar.current, calibLeft.current, calibRight.current,
+      calibMar.current, faceRatio
+    );
+    if (profile.failed) {
+      setErr(profile.failed);
+      setErrCritical(false);
+      setCalibrating(false); calibratingRef.current = false; setCalibCount(0);
+      clearInterval(calibIntervalRef.current);
+      return false;
+    }
+    persistCalibration(profile);
+    setHasCalibration(true);
+    setErr('');
+    setCalibrating(false); calibratingRef.current = false; setCalibCount(0);
+    clearInterval(calibIntervalRef.current);
+    return true;
+  };
+
+  const startCalibration = () => {
+    calibEar.current = []; calibMar.current = [];
+    calibLeft.current = []; calibRight.current = []; calibTicks.current = 0;
+    setCalibrating(true); calibratingRef.current = true; setCalibCount(8);
+    let cnt = 8;
+    if (calibIntervalRef.current) clearInterval(calibIntervalRef.current);
+    calibIntervalRef.current = setInterval(() => { cnt -= 1; setCalibCount(cnt); if (cnt <= 0) clearInterval(calibIntervalRef.current); }, 1000);
+    setTimeout(() => {
+      if (calibratingRef.current) finishCalibration();
+      else { setCalibrating(false); calibratingRef.current = false; clearInterval(calibIntervalRef.current); }
+    }, 8000);
+  };
+
   const start = async () => {
+    if (starting) return;
+    setStarting(true); setErr(''); setErrCritical(false);
     try {
       await driverAPI.startSession();
+    } catch (e) {
+      const status = e && e.response && e.response.status;
+      const serverMsg = e && e.response && e.response.data && e.response.data.message;
+      const retry = e && e.response && e.response.data && e.response.data.retryAfter;
+      if (status === 429) {
+        setErr(serverMsg || `Too many requests — please wait${retry ? ` ${retry}s` : ''} and retry`);
+        setErrCritical(true);
+      } else {
+        setErr(serverMsg || 'Could not start session — backend unreachable');
+        setErrCritical(true);
+      }
+      setStarting(false);
+      return;
+    }
+    try {
       try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
       lastGoodTime.current = Date.now();
-      calibEar.current = []; calibMar.current = [];
-      setSe(true); setOn(true); setNoFace(false); setErr(''); setCalibrating(true); calibratingRef.current = true; setCalibCount(8);
-      let cnt = 8;
-      calibIntervalRef.current = setInterval(() => { cnt -= 1; setCalibCount(cnt); if (cnt <= 0) clearInterval(calibIntervalRef.current); }, 1000);
-      setTimeout(() => {
-        if (calibratingRef.current && calibEar.current.length >= 5) {
-          const avgEar = calibEar.current.reduce((a,b)=>a+b,0)/calibEar.current.length;
-          const avgMar = calibMar.current.reduce((a,b)=>a+b,0)/calibMar.current.length;
-          EAR_CLOSED = Math.max(0.19, Math.min(0.28, avgEar * 0.75));
-          EAR_LOW = EAR_CLOSED + 0.06;
-          MAR_YAWN = Math.max(0.45, Math.min(0.60, avgMar * 1.6));
-          MAR_HALF = MAR_YAWN - 0.15;
-          try { localStorage.setItem('vigiley-calib', JSON.stringify({ ec: EAR_CLOSED, el: EAR_LOW, my: MAR_YAWN, mh: MAR_HALF, avgEar, avgMar })); } catch {}
-        }
-        setCalibrating(false); calibratingRef.current = false; clearInterval(calibIntervalRef.current);
-      }, 8000);
+      setSe(true); setOn(true); setNoFace(false); setErr(''); setErrCritical(false);
+      if (HAS_CALIBRATION) {
+        // Saved baseline exists — skip the 8s calibration, monitor immediately.
+        setCalibrating(false); calibratingRef.current = false;
+      } else {
+        startCalibration();
+      }
       setTimeout(detect, 100);
       iv.current = setInterval(detect, CAPTURE_INTERVAL);
     } catch (_) {}
+    setStarting(false);
   };
 
   const stop = async () => {
@@ -221,6 +379,7 @@ export default function VideoFeed({ onStatusChange }) {
     if (calibIntervalRef.current) clearInterval(calibIntervalRef.current);
     setOn(false); setNoFace(false); setErr(''); setCalibrating(false); calibratingRef.current = false;
     calibEar.current = []; calibMar.current = [];
+    calibLeft.current = []; calibRight.current = []; calibTicks.current = 0;
     try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
     try { await driverAPI.endSession(); } catch (_) {}
   };
@@ -389,8 +548,8 @@ export default function VideoFeed({ onStatusChange }) {
           {/* Related: show personalized thresholds + recalibrate (one tap) */}
           {!calibrating && on && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 6, background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)' }}>
-              <span style={{ fontSize: 9, color: '#7dd3fc' }}>Your baseline: EAR {EAR_CLOSED.toFixed(2)}-{EAR_LOW.toFixed(2)} MAR {MAR_YAWN.toFixed(2)}</span>
-              <button onClick={() => { calibEar.current=[]; calibMar.current=[]; setCalibrating(true); setTimeout(()=>setCalibrating(false),8000); }} style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}>Recalibrate</button>
+              <span style={{ fontSize: 9, color: '#7dd3fc' }}>Your baseline: EAR {EAR_CLOSED.toFixed(2)}-{EAR_LOW.toFixed(2)} MAR {MAR_YAWN.toFixed(2)}{hasCalibration ? ' ✓ saved' : ''}{EYES_MODE !== 'both' ? ` · 1-eye (${EYES_MODE})` : ''}{!MOUTH_ENABLED ? ' · mouth off' : ''}</span>
+              <button onClick={() => { startCalibration(); }} style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 6, padding: '2px 6px', cursor: 'pointer' }}>Recalibrate</button>
             </div>
           )}
 
@@ -447,24 +606,29 @@ export default function VideoFeed({ onStatusChange }) {
       )}
 
       {err && !noFace && (
-        <div style={{ fontSize: 10, color: LV[2], textAlign: 'center', padding: '4px 10px' }}>{err}</div>
+        <div style={{ fontSize: 10, fontWeight: errCritical ? 700 : 400, color: errCritical ? LV[4] : LV[2], textAlign: 'center', padding: '4px 10px' }}>{err}</div>
       )}
 
-      <button onClick={on ? stop : start} style={{
+      <button onClick={on ? stop : start} disabled={starting} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         padding: 10, margin: 10, borderRadius: 8,
-        border: '1.5px solid', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+        border: '1.5px solid', fontWeight: 600, fontSize: 13,
+        cursor: starting ? 'wait' : 'pointer',
+        opacity: starting ? 0.65 : 1,
         width: 'calc(100% - 20px)',
         background: on ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
         color: on ? '#fca5a5' : '#86efac',
         borderColor: on ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
       }}>
-        {on ? <Square size={14} /> : <Play size={14} />}
-        {on ? 'Stop Monitoring' : 'Start Monitoring'}
+        {starting
+          ? <span style={{ width: 14, height: 14, border: '2px solid rgba(134,239,172,0.25)', borderTopColor: '#86efac', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+          : (on ? <Square size={14} /> : <Play size={14} />)}
+        {starting ? 'Starting...' : (on ? 'Stop Monitoring' : 'Start Monitoring')}
       </button>
       <style>{`
         @keyframes pulse {50%{opacity:0.4}}
         @keyframes af {0%,100%{opacity:1} 50%{opacity:0.65}}
+        @keyframes spin {to{transform:rotate(360deg)}}
       `}</style>
     </div>
   );

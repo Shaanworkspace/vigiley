@@ -69,8 +69,68 @@ router.get('/dashboard', protect, async (req, res) => {
   }
 });
 
-router.post('/detection', protect, async (req, res) => {
+// Per-driver calibration profile (Flaw 2A fix).
+// Saved once after the 8-second frontend calibration, reused across sessions.
+router.get('/calibration', protect, async (req, res) => {
   try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id).select('calibration');
+    res.json({ calibration: user?.calibration || null });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/calibration', protect, async (req, res) => {
+  try {
+    const { earClosed, earLow, marYawn, marHalf, avgEar, avgMar,
+      eyesMode, mouthEnabled, leftAvgEar, rightAvgEar, quality } = req.body;
+
+    const num = (v, low, high) =>
+      typeof v === 'number' && Number.isFinite(v) && v >= low && v <= high ? v : null;
+    const calibration = {
+      earClosed: num(earClosed, 0.1, 0.4),
+      earLow: num(earLow, 0.1, 0.5),
+      marYawn: num(marYawn, 0.2, 1.0),
+      marHalf: num(marHalf, 0.1, 0.9),
+      avgEar: typeof avgEar === 'number' && Number.isFinite(avgEar) ? avgEar : undefined,
+      avgMar: typeof avgMar === 'number' && Number.isFinite(avgMar) ? avgMar : undefined,
+      eyesMode: ['both', 'left', 'right', 'none'].includes(eyesMode) ? eyesMode : 'both',
+      mouthEnabled: mouthEnabled === false ? false : true,
+      leftAvgEar: typeof leftAvgEar === 'number' && Number.isFinite(leftAvgEar) ? leftAvgEar : undefined,
+      rightAvgEar: typeof rightAvgEar === 'number' && Number.isFinite(rightAvgEar) ? rightAvgEar : undefined,
+      calibratedAt: new Date(),
+    };
+    if (quality && typeof quality === 'object') {
+      const samples = Number.isFinite(quality.samples) ? Math.round(quality.samples) : undefined;
+      const faceRatio = typeof quality.faceRatio === 'number' && quality.faceRatio >= 0 && quality.faceRatio <= 1
+        ? quality.faceRatio : undefined;
+      if (samples !== undefined || faceRatio !== undefined) {
+        calibration.quality = {};
+        if (samples !== undefined) calibration.quality.samples = samples;
+        if (faceRatio !== undefined) calibration.quality.faceRatio = faceRatio;
+      }
+    }
+    if (!calibration.earClosed || !calibration.earLow || !calibration.marYawn || !calibration.marHalf) {
+      return res.status(400).json({ message: 'Invalid calibration thresholds' });
+    }
+    if (calibration.earLow <= calibration.earClosed || calibration.marYawn <= calibration.marHalf) {
+      return res.status(400).json({ message: 'Invalid calibration band ordering' });
+    }
+
+    const User = require('../models/User');
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { calibration } },
+      { new: true, runValidators: true }
+    ).select('calibration');
+    res.json({ calibration: user.calibration });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/detection', protect, async (req, res) => {  try {
     const {
       status,
       confidence,
@@ -78,6 +138,7 @@ router.post('/detection', protect, async (req, res) => {
       mouthAspectRatio = 0.1,
       headPitch = 0,
       headYaw = 0,
+      perclos = 0,
     } = req.body;
 
     const log = await DetectionLog.create({
@@ -141,8 +202,11 @@ router.post('/detection', protect, async (req, res) => {
 
       const confPct = (confidence || 0) * 100;
       const alertThreshold = 8;
+      const alertCount = activeSession.totalAlerts || 0;
       const needsCountdown = true;
-      if (confPct > alertThreshold || sds > alertThreshold) {
+      const alertStatuses = ['eyes_closed', 'yawning', 'drowsy', 'microsleep', 'high_risk', 'critical'];
+      // Only eye close and yawning - distraction removed as per user
+      if (alertStatuses.includes(status) && (confPct > alertThreshold || sds > 30)) {
         const alertSeverity =
           confPct > 80 || sds > 85
             ? 'critical'

@@ -1,0 +1,400 @@
+{
+  "dataset": "NTHU-DDD-derived (real, MediaPipe features; NO subject IDs \u2014 frame-stratified split, subject overlap possible)",
+  "provenance": {
+    "file": "features.npz",
+    "sha256": "c8a49dd9ba149dd445544a3ce91675f1a4c781c35c976cfd795711a3c0c081df",
+    "keys": [
+      "X_test",
+      "X_train",
+      "y_test",
+      "y_train"
+    ],
+    "subject_ids_present": false,
+    "label": "NTHU-DDD-derived (real, MediaPipe features; NO subject IDs \u2014 frame-stratified split, subject overlap possible)"
+  },
+  "protocol": "Frame-level classification; stratified train/test split. All thresholds and model weights tuned/fitted on TRAIN, reported on held-out TEST. Subject-disjoint evaluation requires subject IDs (see build_features.py).",
+  "fixed_default": {
+    "accuracy": 0.5230466554243958,
+    "precision": 0.5161290322580645,
+    "recall": 0.9988950276243094,
+    "f1_score": 0.6805947675512892,
+    "confusion_matrix": [
+      [
+        53,
+        1695
+      ],
+      [
+        2,
+        1808
+      ]
+    ]
+  },
+  "ear_tuned_on_train": {
+    "accuracy": 0.5845980888139404,
+    "precision": 0.5581232492997199,
+    "recall": 0.8806629834254144,
+    "f1_score": 0.6832404629232749,
+    "confusion_matrix": [
+      [
+        486,
+        1262
+      ],
+      [
+        216,
+        1594
+      ]
+    ],
+    "threshold": 0.395,
+    "train_best_f1": 0.6835662441772288
+  },
+  "logistic_regression": {
+    "accuracy": 0.6416526138279932,
+    "precision": 0.6620230163537251,
+    "recall": 0.6038674033149172,
+    "f1_score": 0.6316093614562266,
+    "confusion_matrix": [
+      [
+        1190,
+        558
+      ],
+      [
+        717,
+        1093
+      ]
+    ],
+    "expected_calibration_error": 0.03423962620852392,
+    "reliability_bins": [
+      {
+        "bin": [
+          0.0,
+          0.1
+        ],
+        "count": 28,
+        "accuracy": 0.0,
+        "mean_confidence": 0.06282263925658418
+      },
+      {
+        "bin": [
+          0.1,
+          0.2
+        ],
+        "count": 21,
+        "accuracy": 0.0,
+        "mean_confidence": 0.15369746726113429
+      },
+      {
+        "bin": [
+          0.2,
+          0.30000000000000004
+        ],
+        "count": 343,
+        "accuracy": 0.36151603498542273,
+        "mean_confidence": 0.2754505600953951
+      },
+      {
+        "bin": [
+          0.30000000000000004,
+          0.4
+        ],
+        "count": 766,
+        "accuracy": 0.32114882506527415,
+        "mean_confidence": 0.34606433458791663
+      },
+      {
+        "bin": [
+          0.4,
+          0.5
+        ],
+        "count": 749,
+        "accuracy": 0.46328437917222964,
+        "mean_confidence": 0.4480963172774405
+      },
+      {
+        "bin": [
+          0.5,
+          0.6000000000000001
+        ],
+        "count": 498,
+        "accuracy": 0.536144578313253,
+        "mean_confidence": 0.5458472540509709
+      },
+      {
+        "bin": [
+          0.6000000000000001,
+          0.7000000000000001
+        ],
+        "count": 482,
+        "accuracy": 0.6120331950207469,
+        "mean_confidence": 0.6522006899435043
+      },
+      {
+        "bin": [
+          0.7000000000000001,
+          0.8
+        ],
+        "count": 556,
+        "accuracy": 0.7787769784172662,
+        "mean_confidence": 0.7335016022643576
+      },
+      {
+        "bin": [
+          0.8,
+          0.9
+        ],
+        "count": 62,
+        "accuracy": 0.7419354838709677,
+        "mean_confidence": 0.8387218689572318
+      },
+      {
+        "bin": [
+          0.9,
+          1.0
+        ],
+        "count": 53,
+        "accuracy": 0.9811320754716981,
+        "mean_confidence": 0.9530229677184702
+      }
+    ],
+    "coefficients": [
+      -0.7702276572558001,
+      0.4666429816159259,
+      -0.004620691382474157,
+      -0.021639487476042656
+    ],
+    "intercept": 0.041109526342571166
+  },
+  "ear_sweep_on_test": [
+    {
+      "ear_threshold": 0.15,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "ear_threshold": 0.16,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "ear_threshold": 0.17,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "ear_threshold": 0.18,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "ear_threshold": 0.19,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "ear_threshold": 0.2,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0
+    },
+    {
+      "ear_threshold": 0.21,
+      "accuracy": 0.49128724002248453,
+      "precision": 0.5,
+      "recall": 0.0022099447513812156,
+      "f1_score": 0.0044004400440044
+    },
+    {
+      "ear_threshold": 0.22,
+      "accuracy": 0.49353569421023047,
+      "precision": 0.6428571428571429,
+      "recall": 0.009944751381215469,
+      "f1_score": 0.01958650707290533
+    },
+    {
+      "ear_threshold": 0.23,
+      "accuracy": 0.5222034851039911,
+      "precision": 0.7864583333333334,
+      "recall": 0.08342541436464089,
+      "f1_score": 0.15084915084915085
+    },
+    {
+      "ear_threshold": 0.24,
+      "accuracy": 0.5708263069139966,
+      "precision": 0.8165548098434005,
+      "recall": 0.20165745856353592,
+      "f1_score": 0.32343819229065135
+    },
+    {
+      "ear_threshold": 0.25,
+      "accuracy": 0.5902192242833052,
+      "precision": 0.7784810126582279,
+      "recall": 0.2718232044198895,
+      "f1_score": 0.40294840294840295
+    },
+    {
+      "ear_threshold": 0.26,
+      "accuracy": 0.603991006183249,
+      "precision": 0.7607282184655396,
+      "recall": 0.32320441988950277,
+      "f1_score": 0.4536642109344707
+    },
+    {
+      "ear_threshold": 0.27,
+      "accuracy": 0.6107363687464867,
+      "precision": 0.7348066298342542,
+      "recall": 0.3674033149171271,
+      "f1_score": 0.48987108655616934
+    },
+    {
+      "ear_threshold": 0.28,
+      "accuracy": 0.6110174255199551,
+      "precision": 0.7113095238095238,
+      "recall": 0.3961325966850829,
+      "f1_score": 0.5088715400993613
+    },
+    {
+      "ear_threshold": 0.29,
+      "accuracy": 0.6110174255199551,
+      "precision": 0.6929347826086957,
+      "recall": 0.42265193370165743,
+      "f1_score": 0.5250514756348661
+    },
+    {
+      "ear_threshold": 0.3,
+      "accuracy": 0.6129848229342327,
+      "precision": 0.6814752724224644,
+      "recall": 0.44917127071823204,
+      "f1_score": 0.5414585414585414
+    },
+    {
+      "ear_threshold": 0.31,
+      "accuracy": 0.6188870151770658,
+      "precision": 0.6701649175412294,
+      "recall": 0.49392265193370166,
+      "f1_score": 0.5687022900763359
+    },
+    {
+      "ear_threshold": 0.32,
+      "accuracy": 0.6284429454749859,
+      "precision": 0.6648648648648648,
+      "recall": 0.543646408839779,
+      "f1_score": 0.598176291793313
+    },
+    {
+      "ear_threshold": 0.33,
+      "accuracy": 0.6323777403035413,
+      "precision": 0.6541769041769042,
+      "recall": 0.5883977900552486,
+      "f1_score": 0.6195462478184991
+    },
+    {
+      "ear_threshold": 0.34,
+      "accuracy": 0.6360314783586284,
+      "precision": 0.6434540389972145,
+      "recall": 0.638121546961326,
+      "f1_score": 0.6407766990291263
+    },
+    {
+      "ear_threshold": 0.35,
+      "accuracy": 0.6450252951096122,
+      "precision": 0.6357320099255583,
+      "recall": 0.7077348066298342,
+      "f1_score": 0.6698039215686274
+    },
+    {
+      "ear_threshold": 0.36,
+      "accuracy": 0.636593591905565,
+      "precision": 0.6163890139576768,
+      "recall": 0.7563535911602209,
+      "f1_score": 0.6792359216075415
+    },
+    {
+      "ear_threshold": 0.37,
+      "accuracy": 0.6174817313097246,
+      "precision": 0.5925010300782859,
+      "recall": 0.7944751381215469,
+      "f1_score": 0.6787821571866887
+    },
+    {
+      "ear_threshold": 0.38,
+      "accuracy": 0.6079258010118044,
+      "precision": 0.5805825242718446,
+      "recall": 0.8259668508287292,
+      "f1_score": 0.6818700114025086
+    },
+    {
+      "ear_threshold": 0.39,
+      "accuracy": 0.5933108487914559,
+      "precision": 0.565784704603117,
+      "recall": 0.8624309392265194,
+      "f1_score": 0.6833005033924271
+    },
+    {
+      "ear_threshold": 0.4,
+      "accuracy": 0.5744800449690838,
+      "precision": 0.5499325236167342,
+      "recall": 0.9005524861878453,
+      "f1_score": 0.6828655215751991
+    },
+    {
+      "ear_threshold": 0.41,
+      "accuracy": 0.5536818437324339,
+      "precision": 0.5349056603773585,
+      "recall": 0.9397790055248619,
+      "f1_score": 0.6817635270541084
+    },
+    {
+      "ear_threshold": 0.42,
+      "accuracy": 0.5382237211916807,
+      "precision": 0.524873398868037,
+      "recall": 0.9734806629834254,
+      "f1_score": 0.6820205148054964
+    },
+    {
+      "ear_threshold": 0.43,
+      "accuracy": 0.5323215289488477,
+      "precision": 0.5211349160393747,
+      "recall": 0.994475138121547,
+      "f1_score": 0.6838905775075987
+    },
+    {
+      "ear_threshold": 0.44,
+      "accuracy": 0.5261382799325464,
+      "precision": 0.5177548682703322,
+      "recall": 0.9988950276243094,
+      "f1_score": 0.6820067898906074
+    },
+    {
+      "ear_threshold": 0.45,
+      "accuracy": 0.5230466554243958,
+      "precision": 0.5161198288159772,
+      "recall": 0.9994475138121547,
+      "f1_score": 0.6807149576669801
+    }
+  ],
+  "thresholds": {
+    "ear_closed": 0.24,
+    "ear_low": 0.28,
+    "mar_yawn": 0.44,
+    "frames_closed": 1,
+    "frames_microsleep": 2,
+    "frames_drowsy": 4,
+    "frames_critical": 6,
+    "frames_yawn": 2
+  },
+  "limitations": [
+    "No subject IDs in current features.npz: train/test subject overlap possible.",
+    "MAR is weakly discriminative on NTHU-DDD (talking/laughing in negatives).",
+    "Frame-level metrics only; temporal event metrics are future work."
+  ]
+}

@@ -5,8 +5,8 @@ import { Bell, CheckCircle, Clock, AlertTriangle, ShieldCheck, Siren, Volume2 } 
 import { startAlarm, stopAlarm } from '../utils/alarm';
 
 const SV = { critical: { bg: 'rgba(239,68,68,0.1)', dot: '#ef4444' }, high: { bg: 'rgba(234,88,12,0.1)', dot: '#ea580c' }, medium: { bg: 'rgba(245,158,11,0.1)', dot: '#f59e0b' }, low: { bg: 'rgba(59,130,246,0.08)', dot: '#3b82f6' } };
-const COUNTDOWN_SECONDS = 3;
-const ACCEPT_SECONDS = 2;
+const COUNTDOWN_SECONDS = 5;
+const ACCEPT_SECONDS = 5;
 const ALARM_ESCALATE_SECONDS = 10;
 
 export default function AlertPanel({ liveStatus }) {
