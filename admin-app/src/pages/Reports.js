@@ -11,7 +11,7 @@ export default function Reports() {
   const [dates, setDates] = useState({startDate:new Date(Date.now()-7*86400000).toISOString().split('T')[0],endDate:new Date().toISOString().split('T')[0]});
 
   useEffect(()=>{load()},[]);
-  const load = async () => {setLoading(true);try{const r=await adminAPI.getReportSummary(dates);setReport(r.data)}catch(_){}finally{setLoading(false)}};
+  const load = async () => {setLoading(true);try{const r=await adminAPI.getReportSummary(dates);setReport(r.data)}catch (err) { console.error(err); }finally{setLoading(false)}};
 
   return (
     <div style={{minHeight:'100vh',background:'#020617'}}>

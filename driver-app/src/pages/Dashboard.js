@@ -35,7 +35,7 @@ export default function Dashboard() {
   useEffect(() => { load(); const i = setInterval(load, 3000); return () => clearInterval(i); }, []);
 
   const load = async () => {
-    try { const r = await driverAPI.getDashboard(); setData(r.data); } catch (_) { } finally { setLoading(false); }
+    try { const r = await driverAPI.getDashboard(); setData(r.data); } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   const s = data.activeSession;

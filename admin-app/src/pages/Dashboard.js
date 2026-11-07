@@ -77,7 +77,7 @@ export default function Dashboard() {
       setStats(s.data);
       setDrivers(d.data.drivers || []);
       setTimeout(() => setVis(true), 100);
-    } catch (_) { } finally { setLoading(false); }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   if (loading) return (

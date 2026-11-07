@@ -31,11 +31,11 @@ export default function Alerts() {
       else if (filter === 'unacknowledged') p.status = 'unacknowledged';
       const r = await adminAPI.getAlerts(p);
       setAlerts(r.data.alerts);
-    } catch (_) { } finally { setLoading(false); }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   const ack = async (id) => {
-    try { await adminAPI.acknowledgeAlert(id); load(); } catch (_) { }
+    try { await adminAPI.acknowledgeAlert(id); load(); } catch (err) { console.error(err); }
   };
 
   const sevCount = (s) => alerts.filter(a => a.severity === s).length;
