@@ -2,7 +2,9 @@
 
 **Multi-Modal Driver Drowsiness Detection & Intelligent Alert System**
 
-*Version 1.0.0 | MIT License | Production Ready*
+*Version 1.1.0 | MIT License*
+
+[![CI](https://github.com/Shaanworkspace/vigiley/actions/workflows/ci.yml/badge.svg)](https://github.com/Shaanworkspace/vigiley/actions/workflows/ci.yml)
 
 VigilEye is a real-time driver monitoring system that detects drowsiness using a standard webcam. It fuses Eye Aspect Ratio (EAR), Mouth Aspect Ratio (MAR), and head pose at 500ms intervals, computes a Sleepiness Score (SDS), and delivers graded alerts with automatic escalation to a fleet admin dashboard.
 
@@ -213,8 +215,7 @@ npm run dev:landing          # 3002
 
 **Seed DB (first time):**
 ```bash
-node backend/seed.js
-# Or POST http://localhost:5001/api/setup
+cd backend && npm run seed   # local/dev databases only; refuses NODE_ENV=production
 ```
 
 **Open:**
@@ -223,7 +224,7 @@ node backend/seed.js
 - Landing: http://localhost:3002
 - Health: http://localhost:5001/api/health, http://localhost:5002/health
 
-**Demo logins:**
+**Demo logins (local seed only — the hosted demo uses different credentials):**
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | `admin@example.com` | `admin123` |
@@ -416,6 +417,24 @@ vercel --prod
 - Backend: `Node 18`, `npm start`, health `GET /api/health`
 - ML: `Python 3.11`, `pip install -r requirements.txt`, `uvicorn api:app --host 0.0.0.0 --port 5002`
 - Env: `MONGODB_URI` Atlas, `JWT_SECRET`
+
+---
+
+## Security & Testing
+
+- Public signup always creates a `driver`; admins are created only by the seed script or directly in the database.
+- Socket.IO connections must send the login JWT (`auth.token`). Drivers can join only their own room; only admins can join `admin-room`.
+- The ML API keeps separate detector state per driving session (`session_id`), so drivers never share EAR history and a reset only affects its own session.
+- There is no HTTP seed endpoint. Secrets come from environment variables; `.env` files are git-ignored.
+
+Run the tests:
+
+```bash
+cd backend && npm test          # auth, seed endpoint, health, socket room authorization
+cd vigiley-ml && pytest -q      # per-session isolation, reset scope, input validation
+```
+
+CI runs both suites plus a gitleaks secret scan on every push and pull request.
 
 ---
 
