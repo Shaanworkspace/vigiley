@@ -9,6 +9,7 @@ export const connectSocket = () => {
 
   socket = io(SOCKET_URL, {
     transports: ['websocket', 'polling'],
+    auth: { token: localStorage.getItem('token') },
   });
 
   return socket;
