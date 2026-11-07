@@ -65,7 +65,8 @@ router.get('/dashboard', protect, async (req, res) => {
       hourlyBreakdown,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -77,7 +78,8 @@ router.get('/calibration', protect, async (req, res) => {
     const user = await User.findById(req.user._id).select('calibration');
     res.json({ calibration: user?.calibration || null });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -126,7 +128,8 @@ router.put('/calibration', protect, async (req, res) => {
     ).select('calibration');
     res.json({ calibration: user.calibration });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -270,7 +273,8 @@ router.post('/detection', protect, async (req, res) => {  try {
 
     res.status(201).json({ log });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -299,7 +303,8 @@ router.post('/session/start', protect, async (req, res) => {
 
     res.status(201).json({ session });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -330,7 +335,8 @@ router.post('/session/end', protect, async (req, res) => {
 
     res.json({ session });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -357,7 +363,8 @@ router.get('/sessions', protect, async (req, res) => {
 
     res.json({ sessions, stats });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -380,7 +387,8 @@ router.get('/sds-trend', protect, async (req, res) => {
       totalAlerts: session.totalAlerts,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[driver]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 

@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vendored MediaPipe wasm and lockfiles"
+paths = ['''driver-app/public/wasm/.*''', '''.*package-lock\.json''']

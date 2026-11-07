@@ -69,7 +69,8 @@ router.get('/summary', protect, adminOnly, async (req, res) => {
 
     res.json({ statusDistribution, hourlyTrend, alertsBySeverity, topDrivers });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[report]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -92,7 +93,8 @@ router.get('/driver/:id', protect, async (req, res) => {
 
     res.json({ sessions, totalDuration, totalAlerts, avgDrowsinessScore });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[report]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 

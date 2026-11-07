@@ -24,7 +24,8 @@ router.get('/', protect, async (req, res) => {
 
     res.json({ alerts });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[alert]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -49,7 +50,8 @@ router.put('/:id/acknowledge', protect, async (req, res) => {
 
     res.json({ alert });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[alert]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -85,7 +87,8 @@ router.put('/:id/escalate', protect, async (req, res) => {
 
     res.json({ alert });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[alert]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 

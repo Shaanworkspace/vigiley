@@ -46,10 +46,10 @@ export default function AlertPanel({ liveStatus }) {
       const all = r.data.alerts || [];
       const pending = all.filter(a => !a.isAcknowledged && !a.isEscalated).sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
       setAlerts((pending.length ? pending : all.filter(a=> !a.isAcknowledged).sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp))).slice(0, 5));
-    } catch (_) { }
+    } catch (err) { console.error(err); }
   };
   const ack = async (id) => {
-    try { await alertAPI.acknowledgeAlert(id); load(); } catch (_) { }
+    try { await alertAPI.acknowledgeAlert(id); load(); } catch (err) { console.error(err); }
   };
 
   const stopTimer = () => {

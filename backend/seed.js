@@ -5,6 +5,10 @@ const User = require('./models/User');
 dotenv.config({ path: require('path').join(__dirname, '.env') });
 
 const seed = async () => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== 'true') {
+    console.error('Refusing to seed a production database. Set ALLOW_PROD_SEED=true to override.');
+    process.exit(1);
+  }
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected');
