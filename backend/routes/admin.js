@@ -36,7 +36,8 @@ router.get('/drivers', protect, adminOnly, async (req, res) => {
 
     res.json({ drivers: enrichedDrivers });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[admin]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -71,7 +72,8 @@ router.get('/drivers/:id', protect, adminOnly, async (req, res) => {
 
     res.json({ driver, activeSession, recentAlerts, stats, sessionHistory, sdsTrend });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[admin]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -99,7 +101,8 @@ router.get('/alerts', protect, adminOnly, async (req, res) => {
 
     res.json({ alerts });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[admin]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -118,7 +121,8 @@ router.put('/alerts/:id/acknowledge', protect, adminOnly, async (req, res) => {
     if (!alert) return res.status(404).json({ message: 'Alert not found' });
     res.json({ alert });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[admin]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
@@ -181,7 +185,8 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
       avgSessionSDS: avgSessionSDS[0] || { avgSDS: 0, total: 0 },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[admin]', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 });
 
