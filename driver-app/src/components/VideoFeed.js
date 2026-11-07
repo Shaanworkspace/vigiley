@@ -4,6 +4,10 @@ import { driverAPI } from '../services/api';
 import { Play, Square, AlertTriangle, CheckCircle2, AlertOctagon, Siren } from 'lucide-react';
 
 const ML_API = process.env.REACT_APP_ML_API || 'https://vigiley-ml.onrender.com';
+
+// Each driving session gets its own detector state on the ML API.
+const newMlSessionId = () =>
+  (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`);
 const CAPTURE_INTERVAL = 500;
 // Fixed as per user: EAR 0.22/0.23 and MAR 45
 let EAR_CLOSED = 0.23;
@@ -159,6 +163,7 @@ function WarningBar({ label, value, warns }) {
 
 export default function VideoFeed({ onStatusChange }) {
   const wc = useRef(null);
+  const mlSessionId = useRef(newMlSessionId());
   const iv = useRef(null);
   const sendTimerRef = useRef(null);
   const [on, setOn] = useState(false);
@@ -258,6 +263,7 @@ export default function VideoFeed({ onStatusChange }) {
         // Per-driver calibrated thresholds ride along so the DETECTOR
         // (not just the UI) uses them (Flaw 2A fix).
         body: JSON.stringify({
+          session_id: mlSessionId.current,
           image: imgData,
           ear_closed: EAR_CLOSED,
           ear_low: EAR_LOW,
@@ -359,7 +365,7 @@ export default function VideoFeed({ onStatusChange }) {
       return;
     }
     try {
-      try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
+      mlSessionId.current = newMlSessionId();
       lastGoodTime.current = Date.now();
       setSe(true); setOn(true); setNoFace(false); setErr(''); setErrCritical(false);
       if (HAS_CALIBRATION) {
@@ -370,7 +376,7 @@ export default function VideoFeed({ onStatusChange }) {
       }
       setTimeout(detect, 100);
       iv.current = setInterval(detect, CAPTURE_INTERVAL);
-    } catch (_) {}
+    } catch (err) { console.error(err); }
     setStarting(false);
   };
 
@@ -380,8 +386,14 @@ export default function VideoFeed({ onStatusChange }) {
     setOn(false); setNoFace(false); setErr(''); setCalibrating(false); calibratingRef.current = false;
     calibEar.current = []; calibMar.current = [];
     calibLeft.current = []; calibRight.current = []; calibTicks.current = 0;
-    try { await fetch(`${ML_API}/reset`, { method: 'POST' }); } catch (_) {}
-    try { await driverAPI.endSession(); } catch (_) {}
+    try {
+      await fetch(`${ML_API}/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: mlSessionId.current }),
+      });
+    } catch (err) { console.warn('[ml] reset failed', err); }
+    try { await driverAPI.endSession(); } catch (err) { console.error('[session] end failed', err); }
   };
 
   const isStale = noFace && Date.now() - lastGoodTime.current > 3000;
